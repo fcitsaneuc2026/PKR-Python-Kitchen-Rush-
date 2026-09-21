@@ -1105,3 +1105,213 @@ html, body {
   #gameScreen .delivery-lane,
   #gameScreen .delivery-cars{display:none}
 }
+
+
+/* =========================================================
+   PKR FINAL GAME WINDOW LAYOUT
+   - Status/backpack above the board
+   - Y-axis directly beside the 10x10 grid
+   - Full grass environment around the kitchen
+   - Delivery cars kept on the right grass area
+   - Fixed internal game canvas so browser resizing does not
+     distort the 48px x 48px grid
+   ========================================================= */
+
+#gameScreen .pkr-game-window {
+  overflow-x: auto;
+}
+
+#gameScreen .pkr-game-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px 28px;
+  min-height: 0;
+  overflow-x: auto;
+}
+
+/* Player information becomes a horizontal strip above the game. */
+#gameScreen .player-info-panel {
+  width: 100%;
+  max-width: 900px;
+  min-width: 860px;
+  align-self: center;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 2fr;
+  align-items: center;
+  gap: 22px;
+  padding: 12px 16px;
+  min-height: 92px;
+}
+
+#gameScreen .player-info-section {
+  min-width: 0;
+}
+
+#gameScreen .player-info-section strong {
+  margin-bottom: 5px;
+}
+
+#gameScreen .backpack {
+  grid-template-columns: repeat(4, minmax(70px, 1fr));
+  gap: 7px;
+}
+
+#gameScreen .backpack .slot {
+  min-height: 44px;
+}
+
+/* Coordinate board stays at a fixed physical size:
+   480px = 10 cells × 48px. */
+#gameScreen .coordinate-board {
+  width: 748px;
+  min-width: 748px;
+  max-width: none;
+  display: grid;
+  grid-template-columns: 28px 720px;
+  grid-template-rows: 480px 26px;
+  column-gap: 8px;
+  row-gap: 5px;
+  justify-content: center;
+  align-items: start;
+}
+
+/* Y numbers sit immediately beside the actual grid. */
+#gameScreen .y-axis {
+  grid-column: 1;
+  grid-row: 1;
+  width: 28px;
+  height: 480px;
+  display: grid;
+  grid-template-rows: repeat(10, 48px);
+  align-items: center;
+  justify-items: end;
+  padding: 0 2px 0 0;
+  color: #5b4637;
+  font: 700 12px/1 Arial, sans-serif;
+}
+
+/* Environment stage: 720 × 480.
+   The actual game grid remains exactly 480 × 480. */
+#gameScreen .game-stage-wrap {
+  grid-column: 2;
+  grid-row: 1;
+  width: 720px;
+  height: 480px;
+  justify-self: start;
+}
+
+#gameScreen .pkr-game-stage {
+  width: 720px;
+  max-width: none;
+  height: 480px;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+  background: #6fba58;
+  border-radius: 10px;
+}
+
+/* 480 × 480 playable kitchen grid, centered vertically and
+   placed inside the 720px-wide environment. */
+#gameScreen #gameContainer {
+  position: absolute;
+  left: 120px;
+  top: 0;
+  width: 480px;
+  height: 480px;
+  max-width: 480px;
+  margin: 0;
+  z-index: 5;
+  background: #f4d6a0;
+  overflow: hidden;
+}
+
+#gameScreen .x-axis {
+  grid-column: 2;
+  grid-row: 2;
+  width: 480px;
+  margin-left: 120px;
+  display: grid;
+  grid-template-columns: repeat(10, 48px);
+  align-items: start;
+  justify-items: center;
+  padding-top: 2px;
+}
+
+/* Grass surrounds BOTH sides of the kitchen. */
+#gameScreen .environment-decor {
+  position: absolute;
+  inset: 0;
+  width: 720px;
+  height: 480px;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(255,255,255,.18) 0 2px, transparent 3px),
+    radial-gradient(circle at 94% 78%, rgba(255,255,255,.14) 0 2px, transparent 3px),
+    #6fba58;
+}
+
+/* Lake remains on the left grass area. */
+#gameScreen .environment-lake {
+  left: 12px;
+  top: 86px;
+  width: 92px;
+  height: 250px;
+}
+
+/* Trees are kept away from the three car positions. */
+#gameScreen .tree-1 { left: 18px; top: 20px; }
+#gameScreen .tree-2 { left: 88px; top: 370px; }
+#gameScreen .tree-5 { left: 38px; top: 395px; }
+
+#gameScreen .tree-3 { left: 650px; top: 12px; }
+#gameScreen .tree-4 { left: 650px; top: 340px; }
+#gameScreen .tree-6 { left: 600px; top: 400px; }
+
+#gameScreen .rock-1 { left: 108px; top: 58px; }
+#gameScreen .rock-2 { left: 620px; top: 292px; }
+
+/* Right side is grass, not a separate beige lane. */
+#gameScreen .delivery-lane {
+  left: 600px;
+  right: auto;
+  top: 0;
+  width: 120px;
+  height: 480px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,.10) 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 65%, rgba(255,255,255,.08) 0 2px, transparent 3px),
+    #6fba58;
+  border-left: 0;
+  z-index: 2;
+}
+
+/* Cars are outside the 10x10 grid and have clear grass space. */
+#gameScreen .delivery-car-1 { left: 642px; right: auto; top: 58px; }
+#gameScreen .delivery-car-2 { left: 642px; right: auto; top: 209px; }
+#gameScreen .delivery-car-3 { left: 642px; right: auto; top: 360px; }
+
+#gameScreen .delivery-car {
+  z-index: 20;
+}
+
+/* Order card opens toward the right, away from the kitchen grid. */
+#gameScreen .delivery-order-card {
+  left: auto;
+  right: 48px;
+}
+
+/* Keep the entire game environment fixed rather than shrinking
+   when the browser becomes narrow. */
+@media (max-width: 1000px) {
+  #gameScreen .pkr-game-window {
+    min-width: 930px;
+  }
+
+  #gameScreen .pkr-game-body {
+    align-items: center;
+  }
+}
