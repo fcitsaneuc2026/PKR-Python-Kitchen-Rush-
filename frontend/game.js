@@ -35,7 +35,7 @@ const stations = {
   bun: { column: 10, row: 1, ...gridToPixel(10, 1), label: "Bun Chest" }
 };
 const bunChestSprite = {
-  open: "/static/assets/bun/bun_chest_open.png",
+  open: "/static/assets/bun/bun_chest_opened.png",
   closed: "/static/assets/bun/bun_chest_closed.png"
 };
 
