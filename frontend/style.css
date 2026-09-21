@@ -799,9 +799,9 @@ html, body {
 }
 
 /* =========================================================
-   PKR PART 2 — SIMPLE DELIVERY CAR PLACEHOLDER
-   Replace the inner .delivery-car-shape with the provided
-   taxi sprite later. The interaction can stay unchanged.
+   PKR DELIVERY CARS — THREE BURGER ORDERS
+   Uses the supplied top-down car sprite. Cars stay on the
+   right side of the kitchen and do not cover the stations.
    ========================================================= */
 
 #gameScreen .pkr-game-stage {
@@ -811,83 +811,96 @@ html, body {
   margin: 0 auto;
 }
 
+#gameScreen .delivery-cars {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
 #gameScreen .delivery-car {
   position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 20;
-  width: 62px;
-  height: 62px;
+  width: 42px;
+  height: 58px;
   display: grid;
   place-items: center;
+  pointer-events: auto;
   cursor: pointer;
-  transition: transform .18s ease, opacity .35s ease;
+  transition: transform .16s ease;
 }
+
+/* Vertically lined up on the right side, with clear space
+   from the corner chests and the cooking/cutting stations. */
+#gameScreen .delivery-car-1 { right: 48px; top: 58px; }
+#gameScreen .delivery-car-2 { right: 48px; top: 211px; }
+#gameScreen .delivery-car-3 { right: 48px; top: 364px; }
 
 #gameScreen .delivery-car:hover {
-  transform: scale(1.16);
+  transform: scale(1.08);
+  z-index: 30;
 }
 
-#gameScreen .delivery-car.hidden-car {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(75px);
+#gameScreen .delivery-car-sprite {
+  width: 38px;
+  height: 54px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
 }
-
-#gameScreen .delivery-car-shape {
-  width: 46px;
-  height: 30px;
-  border-radius: 8px 8px 5px 5px;
-  background: #d93636;
-  border: 3px solid #7f1d1d;
-  box-shadow: inset 0 5px 0 rgba(255,255,255,.22);
-}
-
-#gameScreen .delivery-car-shape::before,
-#gameScreen .delivery-car-shape::after {
-  content: "";
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #222;
-  border-radius: 50%;
-  bottom: 7px;
-}
-
-#gameScreen .delivery-car-shape::before { margin-left: -22px; }
-#gameScreen .delivery-car-shape::after { margin-left: 12px; }
 
 #gameScreen .delivery-order-card {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  min-width: 145px;
-  padding: 9px 11px;
-  background: #fff;
+  right: 47px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 118px;
+  padding: 8px;
+  background: #fffdf5;
   color: #222;
   border: 2px solid #7f1d1d;
-  border-radius: 8px;
-  box-shadow: 0 5px 0 rgba(0,0,0,.14);
-  font: 13px/1.3 Arial, sans-serif;
+  border-radius: 7px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.14);
+  font: 12px/1.2 Arial, sans-serif;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transition: opacity .12s ease, visibility .12s ease;
+}
+
+#gameScreen .delivery-car:hover .delivery-order-card {
+  opacity: 1;
+  visibility: visible;
 }
 
 #gameScreen .delivery-order-card strong {
   display: block;
-  margin-bottom: 3px;
+  margin-bottom: 6px;
+  font-size: 13px;
 }
 
-#gameScreen .delivery-order-card.hidden {
-  display: none;
+#gameScreen .order-materials {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+#gameScreen .order-materials img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+#gameScreen .delivery-car.drive-away {
+  pointer-events: none;
+  animation: pkr-car-drive-away .7s ease-in forwards;
 }
 
 @keyframes pkr-car-drive-away {
   from { transform: translateY(0); opacity: 1; }
   to { transform: translateY(85px); opacity: 0; }
-}
-
-#gameScreen .delivery-car.drive-away {
-  animation: pkr-car-drive-away .7s ease-in forwards;
 }
 
 #gameScreen .command-curtain-body {

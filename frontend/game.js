@@ -77,9 +77,8 @@ function updateHUD() {
   $("timeValue").textContent = `${m}:${s}`;
   const g = state.player ? pixelToGrid(state.player.x, state.player.y) : {column:1,row:1};
   $("playerStatus").innerHTML =
-    `Position: <b>(${g.column}, ${g.row})</b><br>` +
-    `Backpack: <b>${state.backpack.filter(Boolean).length}/${state.backpack.length}</b><br>` +
-    `Order: <b>${state.currentOrder?.name || "None"}</b>`;
+    `Position: <b>(${g.column}, ${g.row})</b>`;
+  $("playerCoordinate").textContent = `(${g.column}, ${g.row})`;
   renderIngredientBackpack();
 }
 function renderBackpack() {
@@ -381,44 +380,21 @@ startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:tru
 fetch("/api/health").catch(()=>null);loadPython();
 
 /* =========================================================
-   PKR PART 3 — DELIVERY EVENT BRIDGE
-   The car still stays independent from core game logic.
-   Existing code can call window.dispatchEvent(new CustomEvent(
-   "pkr:order-complete", { detail: { order: "Classic Burger" } }
-   ));
+   PKR DELIVERY EVENT BRIDGE
+   The three visible cars are persistent order displays.
+   Keep a small API for future order/animation integration.
    ========================================================= */
 (() => {
-  const car = document.getElementById("deliveryCar");
-  const order = document.getElementById("deliveryOrder");
-  const orderText = document.getElementById("deliveryOrderText");
-  if (!car || !order || !orderText) return;
+  const cars = [...document.querySelectorAll(".delivery-car")];
+  if (!cars.length) return;
 
-  window.addEventListener("pkr:order-complete", (event) => {
-    const name = event?.detail?.order || "Classic Burger";
-    orderText.textContent = name;
-    order.classList.add("hidden");
-    car.classList.remove("hidden-car", "drive-away");
-    void car.offsetWidth;
-    car.classList.add("drive-away");
+  window.addEventListener("pkr:order-complete", () => {
+    // Delivery animation can be connected here later.
   });
 
   window.PKRDeliveryCar = {
-    showOrder(text = "Classic Burger") {
-      orderText.textContent = text;
-      car.classList.remove("hidden-car", "drive-away");
-      order.classList.add("hidden");
-    },
-    driveAway(text = "Classic Burger") {
-      orderText.textContent = text;
-      order.classList.add("hidden");
-      car.classList.remove("hidden-car", "drive-away");
-      void car.offsetWidth;
-      car.classList.add("drive-away");
-    },
-    reset(text = "Classic Burger") {
-      orderText.textContent = text;
-      car.classList.remove("hidden-car", "drive-away");
-      order.classList.add("hidden");
-    }
+    showOrder() { cars.forEach(car => car.classList.remove("hidden-car", "drive-away")); },
+    driveAway() { cars.forEach(car => { car.classList.add("drive-away"); }); },
+    reset() { cars.forEach(car => car.classList.remove("hidden-car", "drive-away")); }
   };
 })();
