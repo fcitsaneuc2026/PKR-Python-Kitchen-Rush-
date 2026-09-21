@@ -379,3 +379,70 @@ $("restartBtn").addEventListener("click",()=>location.reload());
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});
 fetch("/api/health").catch(()=>null);loadPython();
+
+
+/* =========================================================
+   PKR PART 2 — DELIVERY CAR / ORDER HOVER
+   Simple isolated prototype. Replace the placeholder visual
+   with the real taxi sprite later without changing this logic.
+   ========================================================= */
+(() => {
+  const car = document.getElementById("deliveryCar");
+  const order = document.getElementById("deliveryOrder");
+  const orderText = document.getElementById("deliveryOrderText");
+
+  if (!car || !order || !orderText) return;
+
+  car.addEventListener("mouseenter", () => {
+    if (!car.classList.contains("drive-away")) {
+      order.classList.remove("hidden");
+    }
+  });
+
+  car.addEventListener("mouseleave", () => {
+    order.classList.add("hidden");
+  });
+
+  // Expose a tiny helper so the existing game can trigger the departure later.
+  window.PKRDeliveryCar = {
+    showOrder(text = "Classic Burger") {
+      orderText.textContent = text;
+      car.classList.remove("hidden-car", "drive-away");
+      order.classList.add("hidden");
+    },
+    driveAway() {
+      order.classList.add("hidden");
+      car.classList.remove("hidden-car");
+      car.classList.remove("drive-away");
+      void car.offsetWidth;
+      car.classList.add("drive-away");
+    },
+    reset(text = "Classic Burger") {
+      orderText.textContent = text;
+      car.classList.remove("hidden-car", "drive-away");
+      order.classList.add("hidden");
+    }
+  };
+})();
+
+(() => {
+  const bar = document.getElementById("commandCurtainBar");
+  const body = document.getElementById("commandCurtainBody");
+  if (!bar || !body) return;
+
+  const toggle = () => {
+    const closed = bar.getAttribute("aria-expanded") !== "false";
+    bar.setAttribute("aria-expanded", closed ? "false" : "true");
+    body.classList.toggle("curtain-closed", closed);
+    const arrow = bar.querySelector(".curtain-chevron");
+    if (arrow) arrow.textContent = closed ? "⌄" : "⌃";
+  };
+
+  bar.addEventListener("click", toggle);
+  bar.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggle();
+    }
+  });
+})();
