@@ -42,7 +42,7 @@
             <div id="gameContainer"></div><div class="grid-note">Grid: 10 columns × 10 rows · Bottom-left (1,1) · Top-right (10,10)</div>
             <div class="in-game-status">
               <div><strong>Player status</strong><span id="playerStatus">Waiting to start…</span></div>
-              <div><strong>Backpack <span class="small-note">(3 slots)</span></strong><div id="backpack" class="backpack"></div></div>
+              <div><strong>Backpack <span class="small-note">(4 slots)</span></strong><div id="backpack" class="backpack"></div></div>
             </div>
             <div id="orderDrawer" class="order-drawer hidden" aria-hidden="true">
               <div class="drawer-heading"><h3>Current Order</h3><button id="orderClose" class="icon-btn" aria-label="Close current order">✕</button></div>
@@ -54,12 +54,12 @@
           <div class="panel guidance-panel">
             <div class="tabs" role="tablist">
               <button class="tab active" data-tab="movement">Movement</button>
-              <button class="tab" data-tab="fridge">Fridge</button>
-              <button class="tab" data-tab="cutting">Cut lettuce</button>
-              <button class="tab" data-tab="fry">Fry</button>
-              <button class="tab" data-tab="plate">Plate</button>
-              <button class="tab" data-tab="wash">Wash</button>
-              <button class="tab" data-tab="serve">Serve</button>
+              <button class="tab" data-tab="bun">Bun</button>
+              <button class="tab" data-tab="patty">Patty</button>
+              <button class="tab" data-tab="lettuce">Lettuce</button>
+              <button class="tab" data-tab="tomato">Tomato</button>
+              <button class="tab" data-tab="cook">Cook</button>
+              <button class="tab" data-tab="cut">Cut</button>
             </div>
             <div class="guidance-content">
               <div class="visual-guide" id="visualGuide"><div class="guide-character">🧑‍🍳</div><div class="guide-action" id="guideAction">Move close to a station</div></div>
@@ -71,9 +71,11 @@
         <section class="right-column">
           <div class="panel command-panel">
             <div class="panel-heading"><h2>The Command Area</h2></div>
-            <textarea id="codeEditor" spellcheck="false"># Bun pickup test
+            <textarea id="codeEditor" spellcheck="false"># Collect and cook a bun
 move_to(10, 1)
-take("bun")</textarea>
+take("bun")
+move_to(5, 8)
+cook("bun")</textarea>
             <div class="editor-actions"><button id="runBtn" class="primary-btn" disabled>▶ Run Python</button><button id="clearBtn" class="secondary-btn">Clear</button><button id="hintBtn" class="secondary-btn">Hint</button></div>
             <div class="console-title">Command output</div><pre id="consoleOutput" class="console">Python is loading…</pre>
           </div>
