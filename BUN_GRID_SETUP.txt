@@ -1,0 +1,18 @@
+Python Kitchen Rush — Current Level Grid
+
+Grid: 10 columns x 10 rows.
+Coordinates: 1–10. Bottom-left = (1,1). Top-right = (10,10).
+Bottom-right bun chest = (10,1).
+
+Command examples:
+move_to(10, 1)
+take("bun")
+
+Bun assets:
+frontend/assets/bun/bun_chest_open.png
+frontend/assets/bun/bun_chest_closed.png
+frontend/assets/bun/uncooked_bun.png
+frontend/assets/bun/cooked_bun.png
+
+The other burger commands are retained, but their stations are intentionally not drawn yet.
+They will be placed after the table/map images and coordinate plan are supplied.
