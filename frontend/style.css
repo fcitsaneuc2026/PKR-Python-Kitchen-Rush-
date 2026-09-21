@@ -924,3 +924,184 @@ html, body {
 #gameScreen .delivery-car.drive-away {
   pointer-events: none;
 }
+
+
+/* =========================================================
+   PKR MAP ENVIRONMENT — grass, lake, trees and delivery lane
+   The 10x10 kitchen remains the exact 480x480 play grid.
+   The environment and cars live OUTSIDE that grid.
+   ========================================================= */
+#gameScreen .game-stage-wrap{
+  width: 840px;
+  max-width: none;
+  overflow: visible;
+}
+
+#gameScreen .pkr-game-stage{
+  position: relative;
+  width: 840px;
+  max-width: none;
+  height: 480px;
+  margin: 0 auto;
+  overflow: visible;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255,255,255,.28) 0 2px, transparent 3px),
+    radial-gradient(circle at 22% 82%, rgba(255,255,255,.24) 0 2px, transparent 3px),
+    radial-gradient(circle at 73% 12%, rgba(255,255,255,.22) 0 2px, transparent 3px),
+    radial-gradient(circle at 88% 78%, rgba(255,255,255,.24) 0 2px, transparent 3px),
+    #78bd58;
+  box-shadow: inset 0 0 0 4px rgba(55,105,45,.18);
+}
+
+#gameScreen #gameContainer{
+  position: absolute;
+  left: 150px;
+  top: 0;
+  width: 480px;
+  height: 480px;
+  max-width: 480px;
+  margin: 0;
+  z-index: 5;
+  background: #f4d6a0;
+  border: 4px solid #8b5a3c;
+  box-shadow: 0 0 0 2px rgba(55,105,45,.18), 0 7px 0 rgba(47,91,38,.2);
+}
+
+#gameScreen .x-axis{
+  width: 480px;
+  margin-left: 150px;
+  position: relative;
+  z-index: 10;
+}
+
+#gameScreen .environment-decor{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+}
+
+#gameScreen .environment-lake{
+  position:absolute;
+  left:12px;
+  top:86px;
+  width:118px;
+  height:260px;
+  border-radius:48% 52% 45% 55% / 44% 48% 52% 56%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.35) 0 3px, transparent 4px),
+    radial-gradient(circle at 62% 58%, rgba(255,255,255,.28) 0 3px, transparent 4px),
+    #2d9fd0;
+  border:7px solid #d5e8a2;
+  box-shadow: inset 0 0 0 3px #1681b4, 0 0 0 2px rgba(42,101,48,.25);
+}
+
+#gameScreen .environment-tree{
+  position:absolute;
+  width:54px;
+  height:54px;
+  border-radius:48%;
+  background:
+    radial-gradient(circle at 35% 28%, #9bd85c 0 12%, transparent 13%),
+    radial-gradient(circle at 68% 35%, #6fc348 0 23%, transparent 24%),
+    radial-gradient(circle at 45% 68%, #3f9c45 0 38%, transparent 39%),
+    #2f7f3d;
+  border:5px solid #286d38;
+  box-shadow:0 7px 0 #6b4a2e, 0 10px 0 rgba(49,77,34,.16);
+}
+
+#gameScreen .tree-1{left:18px;top:20px}
+#gameScreen .tree-2{left:88px;top:370px}
+#gameScreen .tree-3{left:690px;top:12px}
+#gameScreen .tree-4{left:750px;top:340px}
+#gameScreen .tree-5{left:42px;top:395px}
+#gameScreen .tree-6{left:700px;top:405px}
+
+#gameScreen .environment-rock{
+  position:absolute;
+  width:24px;height:20px;
+  border-radius:45%;
+  background:#8f9896;
+  border:3px solid #6d7471;
+  box-shadow:inset 4px 3px 0 #b9c0bd;
+}
+#gameScreen .rock-1{left:122px;top:58px}
+#gameScreen .rock-2{left:710px;top:292px}
+
+#gameScreen .delivery-lane{
+  position:absolute;
+  right:0;
+  top:0;
+  width:125px;
+  height:480px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 58px, rgba(255,255,255,.08) 59px 61px),
+    #cdbb91;
+  border-left:5px solid #b09c73;
+  z-index:2;
+}
+
+/* Cars sit on the lane, never on top of the 10x10 grid. */
+#gameScreen .delivery-cars{
+  position:absolute;
+  inset:0;
+  z-index:20;
+  pointer-events:none;
+}
+
+#gameScreen .delivery-car{
+  width:48px;
+  height:62px;
+  pointer-events:auto;
+}
+
+#gameScreen .delivery-car-1{right:66px;top:48px}
+#gameScreen .delivery-car-2{right:66px;top:209px}
+#gameScreen .delivery-car-3{right:66px;top:370px}
+
+#gameScreen .delivery-car-sprite{
+  width:42px;
+  height:58px;
+}
+
+#gameScreen .delivery-order-card{
+  right:auto;
+  left:48px;
+  top:50%;
+  width:128px;
+  border:2px solid #8b6b3e;
+  border-radius:10px;
+  box-shadow:0 4px 0 rgba(0,0,0,.16);
+  background:#fffdf5;
+}
+
+/* Keep the coordinate labels aligned with the actual 480px grid. */
+#gameScreen .coordinate-board{
+  width:868px;
+  max-width:none;
+}
+
+@media (max-width: 1100px){
+  #gameScreen .game-stage-wrap,
+  #gameScreen .pkr-game-stage{width:720px}
+  #gameScreen .coordinate-board{width:748px}
+  #gameScreen #gameContainer{left:120px}
+  #gameScreen .x-axis{margin-left:120px}
+  #gameScreen .tree-3,#gameScreen .tree-4,#gameScreen .tree-6{display:none}
+  #gameScreen .delivery-lane{width:110px}
+  #gameScreen .delivery-car-1,#gameScreen .delivery-car-2,#gameScreen .delivery-car-3{right:50px}
+}
+
+@media (max-width: 760px){
+  #gameScreen .game-stage-wrap,
+  #gameScreen .pkr-game-stage{
+    width:480px;
+  }
+  #gameScreen .coordinate-board{width:min(100%,530px);max-width:530px}
+  #gameScreen #gameContainer{left:0}
+  #gameScreen .x-axis{margin-left:0}
+  #gameScreen .environment-decor,
+  #gameScreen .delivery-lane,
+  #gameScreen .delivery-cars{display:none}
+}
