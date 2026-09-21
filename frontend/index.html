@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Python Kitchen Rush</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+</head>
+<body>
+  <audio id="menuMusic" loop preload="auto" src="/static/sounds/main_menu_music.mp3"></audio>
+  <main class="app-shell">
+    <section id="mainMenu" class="main-menu screen-card">
+      <div class="menu-badge">🍔 CODE • COOK • WIN</div>
+      <h2 class="game-title"><span>PYTHON KITCHEN RUSH</span><small>Code Your Way to Victory!</small></h2>
+      <button id="playMenuBtn" class="primary-btn menu-play-btn">▶ Play Game</button>
+    </section>
+
+    <section id="nameScreen" class="name-screen hidden">
+      <label for="playerName">Player name</label>
+      <input id="playerName" maxlength="24" placeholder="Enter your name" autocomplete="nickname" />
+      <div class="name-actions">
+        <button id="startBtn" class="primary-btn">Start Cooking 🍳</button>
+        <button id="nameBackBtn" class="secondary-btn">Back to Main Menu</button>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="hidden">
+      <div class="game-layout">
+        <section class="left-column">
+          <div class="panel game-panel">
+            <div class="panel-heading">
+              <h2>Game Window</h2>
+              <div class="hud">
+                <span>Time: <b id="timeValue">10:00</b></span>
+                <span>Score: <b id="scoreValue">0</b></span>
+                <span>Orders: <b id="ordersValue">0</b></span>
+                <button id="orderToggle" class="order-toggle" aria-expanded="false">🍔 Current Order</button>
+              </div>
+            </div>
+            <div id="gameContainer"></div><div class="grid-note">Grid: 10 columns × 10 rows · Bottom-left (1,1) · Top-right (10,10)</div>
+            <div class="in-game-status">
+              <div><strong>Player status</strong><span id="playerStatus">Waiting to start…</span></div>
+              <div><strong>Backpack <span class="small-note">(3 slots)</span></strong><div id="backpack" class="backpack"></div></div>
+            </div>
+            <div id="orderDrawer" class="order-drawer hidden" aria-hidden="true">
+              <div class="drawer-heading"><h3>Current Order</h3><button id="orderClose" class="icon-btn" aria-label="Close current order">✕</button></div>
+              <div id="orderCard" class="order-card"></div>
+            </div>
+            <div class="axis-note">Bottom-left is (1, 1). Top-right is (10, 10).</div>
+          </div>
+
+          <div class="panel guidance-panel">
+            <div class="tabs" role="tablist">
+              <button class="tab active" data-tab="movement">Movement</button>
+              <button class="tab" data-tab="fridge">Fridge</button>
+              <button class="tab" data-tab="cutting">Cut lettuce</button>
+              <button class="tab" data-tab="fry">Fry</button>
+              <button class="tab" data-tab="plate">Plate</button>
+              <button class="tab" data-tab="wash">Wash</button>
+              <button class="tab" data-tab="serve">Serve</button>
+            </div>
+            <div class="guidance-content">
+              <div class="visual-guide" id="visualGuide"><div class="guide-character">🧑‍🍳</div><div class="guide-action" id="guideAction">Move close to a station</div></div>
+              <div class="command-guide"><h3>Character Visual Guidance</h3><p id="guideText">Move close to a target coordinate. Interaction works when you are close enough.</p><pre id="guideCode">move_to(10, 1)</pre></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="right-column">
+          <div class="panel command-panel">
+            <div class="panel-heading"><h2>The Command Area</h2></div>
+            <textarea id="codeEditor" spellcheck="false"># Bun pickup test
+move_to(10, 1)
+take("bun")</textarea>
+            <div class="editor-actions"><button id="runBtn" class="primary-btn" disabled>▶ Run Python</button><button id="clearBtn" class="secondary-btn">Clear</button><button id="hintBtn" class="secondary-btn">Hint</button></div>
+            <div class="console-title">Command output</div><pre id="consoleOutput" class="console">Python is loading…</pre>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen-card hidden">
+      <h2>Kitchen challenge complete!</h2>
+      <div id="resultSummary"></div>
+      <button id="leaderboardBtn" class="primary-btn">View shared leaderboard</button>
+      <button id="restartBtn" class="secondary-btn">Play again</button>
+    </section>
+
+    <section id="leaderboardScreen" class="screen-card hidden">
+      <div class="leaderboard-heading">
+        <h2>Shared leaderboard</h2>
+        <button id="backBtn" class="secondary-btn">Back</button>
+      </div>
+      <div id="leaderboardContent">Loading leaderboard…</div>
+    </section>
+  </main>
+
+  <script src="/static/game.js"></script>
+</body>
+</html>
