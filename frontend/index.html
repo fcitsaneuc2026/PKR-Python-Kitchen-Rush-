@@ -27,59 +27,103 @@
     </section>
 
     <section id="gameScreen" class="hidden">
-      <div class="game-layout">
-        <section class="left-column">
-          <div class="panel game-panel">
-            <div class="panel-heading">
-              <h2>Game Window</h2>
-              <div class="hud">
-                <span>Time: <b id="timeValue">10:00</b></span>
-                <span>Score: <b id="scoreValue">0</b></span>
-                <span>Orders: <b id="ordersValue">0</b></span>
-                <button id="orderToggle" class="order-toggle" aria-expanded="false">🍔 Current Order</button>
-              </div>
+      <div class="pkr-game-layout">
+
+        <section class="panel pkr-game-window">
+          <div class="pkr-game-header">
+            <h2>Game Window</h2>
+            <div class="hud">
+              <span>Time: <b id="timeValue">10:00</b></span>
+              <span>Score: <b id="scoreValue">0</b></span>
+              <span>Orders: <b id="ordersValue">0</b></span>
+              <button id="orderToggle" class="order-toggle" aria-expanded="false">🍔 Current Order</button>
             </div>
-            <div id="gameContainer"></div><div class="grid-note">Grid: 10 columns × 10 rows · Bottom-left (1,1) · Top-right (10,10)</div>
-            <div class="in-game-status">
-              <div><strong>Player status</strong><span id="playerStatus">Waiting to start…</span></div>
-              <div><strong>Backpack <span class="small-note">(4 slots)</span></strong><div id="backpack" class="backpack"></div></div>
-            </div>
-            <div id="orderDrawer" class="order-drawer hidden" aria-hidden="true">
-              <div class="drawer-heading"><h3>Current Order</h3><button id="orderClose" class="icon-btn" aria-label="Close current order">✕</button></div>
-              <div id="orderCard" class="order-card"></div>
-            </div>
-            <div class="axis-note">Bottom-left is (1, 1). Top-right is (10, 10).</div>
           </div>
 
-          <div class="panel guidance-panel">
-            <div class="tabs" role="tablist">
-              <button class="tab active" data-tab="movement">Movement</button>
-              <button class="tab" data-tab="bun">Bun</button>
-              <button class="tab" data-tab="patty">Patty</button>
-              <button class="tab" data-tab="lettuce">Lettuce</button>
-              <button class="tab" data-tab="tomato">Tomato</button>
-              <button class="tab" data-tab="cook">Cook</button>
-              <button class="tab" data-tab="cut">Cut</button>
+          <div class="pkr-game-body">
+            <aside class="player-info-panel">
+              <div class="player-info-section">
+                <strong>Player's Status</strong>
+                <div id="playerStatus">Waiting to start…</div>
+              </div>
+
+              <div class="player-info-section">
+                <strong>Player's Coordinate</strong>
+                <div id="playerCoordinate">(1, 1)</div>
+              </div>
+
+              <div class="player-info-section">
+                <strong>Backpack</strong>
+                <div id="backpack" class="backpack"></div>
+              </div>
+            </aside>
+
+            <div class="coordinate-board" aria-label="10 by 10 coordinate guide">
+              <div class="y-axis" aria-hidden="true">
+                <span>10</span><span>9</span><span>8</span><span>7</span><span>6</span>
+                <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+              </div>
+
+              <div class="game-stage-wrap">
+                <div id="gameContainer"></div>
+                <div class="x-axis" aria-hidden="true">
+                  <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                  <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+                </div>
+              </div>
             </div>
-            <div class="guidance-content">
-              <div class="visual-guide" id="visualGuide"><div class="guide-character">🧑‍🍳</div><div class="guide-action" id="guideAction">Move close to a station</div></div>
-              <div class="command-guide"><h3>Character Visual Guidance</h3><p id="guideText">Move close to a target coordinate. Interaction works when you are close enough.</p><pre id="guideCode">move_to(10, 1)</pre></div>
+          </div>
+
+          <!-- Temporary legacy order drawer: kept so existing JS remains safe.
+               It will be replaced by the car-hover order system in a later step. -->
+          <div id="orderDrawer" class="order-drawer hidden" aria-hidden="true">
+            <div class="drawer-heading">
+              <h3>Current Order</h3>
+              <button id="orderClose" class="icon-btn" aria-label="Close current order">✕</button>
+            </div>
+            <div id="orderCard" class="order-card"></div>
+          </div>
+        </section>
+
+        <section class="panel guidance-panel">
+          <div class="panel-heading">
+            <h2>Guide Window</h2>
+          </div>
+          <div class="guidance-content">
+            <div class="visual-guide" id="visualGuide">
+              <div class="guide-character">🧑‍🍳</div>
+              <div class="guide-action" id="guideAction">Move close to a station</div>
+            </div>
+            <div class="command-guide">
+              <h3>Character Visual Guidance</h3>
+              <p id="guideText">Move close to a target coordinate. Interaction works when you are close enough.</p>
+              <pre id="guideCode">move_to(10, 1)</pre>
             </div>
           </div>
         </section>
 
-        <section class="right-column">
-          <div class="panel command-panel">
-            <div class="panel-heading"><h2>The Command Area</h2></div>
+        <section class="panel command-panel">
+          <div class="command-curtain-bar" id="commandCurtainBar" role="button" tabindex="0"
+               aria-expanded="true" aria-controls="commandCurtainBody">
+            <h2>Command Window</h2>
+            <span class="curtain-chevron">⌃</span>
+          </div>
+          <div id="commandCurtainBody" class="command-curtain-body">
             <textarea id="codeEditor" spellcheck="false"># Collect and cook a bun
 move_to(10, 1)
 take("bun")
 move_to(5, 8)
 cook("bun")</textarea>
-            <div class="editor-actions"><button id="runBtn" class="primary-btn" disabled>▶ Run Python</button><button id="clearBtn" class="secondary-btn">Clear</button><button id="hintBtn" class="secondary-btn">Hint</button></div>
-            <div class="console-title">Command output</div><pre id="consoleOutput" class="console">Python is loading…</pre>
+            <div class="editor-actions">
+              <button id="runBtn" class="primary-btn" disabled>▶ Run Python</button>
+              <button id="clearBtn" class="secondary-btn">Clear</button>
+              <button id="hintBtn" class="secondary-btn">Hint</button>
+            </div>
+            <div class="console-title">Command output</div>
+            <pre id="consoleOutput" class="console">Python is loading…</pre>
           </div>
         </section>
+
       </div>
     </section>
 

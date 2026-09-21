@@ -506,3 +506,294 @@ html, body {
 .slot img { width:30px; height:30px; object-fit:contain; image-rendering:pixelated; }
 .slot small { display:block; font-size:9px; color:var(--muted); font-weight:normal; }
 .backpack { grid-template-columns:repeat(4,1fr); }
+
+
+/* =========================================================
+   PKR IN-GAME WINDOW PLACEMENT — PARTIAL IMPLEMENTATION
+   Completed: checklist steps 1-4
+   ========================================================= */
+
+#gameScreen {
+  width: 100%;
+  padding: clamp(18px, 3vw, 42px);
+  background: var(--cream);
+}
+
+#gameScreen .pkr-game-layout {
+  width: min(100%, 1320px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+  grid-template-areas:
+    "game game"
+    "guide command";
+  gap: clamp(16px, 2vw, 28px);
+  align-items: start;
+}
+
+#gameScreen .pkr-game-window {
+  grid-area: game;
+  width: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #fff8e7;
+  border: 3px solid var(--wood);
+  box-shadow: 0 8px 0 rgba(58,42,42,.10);
+}
+
+#gameScreen .pkr-game-header {
+  min-height: clamp(64px, 7vw, 88px);
+  padding: 12px clamp(18px, 2.2vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 3px solid var(--wood);
+  background: #fff8e7;
+}
+
+#gameScreen .pkr-game-header h2 {
+  margin: 0;
+  font-size: clamp(20px, 2.2vw, 30px);
+}
+
+#gameScreen .pkr-game-body {
+  display: grid;
+  grid-template-columns: minmax(155px, 190px) minmax(0, 1fr);
+  gap: clamp(18px, 2.5vw, 34px);
+  align-items: center;
+  padding: clamp(20px, 3vw, 38px);
+  min-height: min(52vw, 700px);
+}
+
+#gameScreen .player-info-panel {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 18px 15px;
+  background: #d4d4d4;
+  border: 2px solid #aaa;
+  border-radius: 6px;
+  color: #222;
+}
+
+#gameScreen .player-info-section strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+#gameScreen #playerStatus,
+#gameScreen #playerCoordinate {
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#gameScreen .backpack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#gameScreen .backpack .slot {
+  min-height: 46px;
+  border: 2px solid #333;
+  border-radius: 2px;
+  background: #eee;
+  font-size: 18px;
+}
+
+#gameScreen .backpack .slot span {
+  font-size: 9px;
+  color: #444;
+}
+
+#gameScreen .coordinate-board {
+  width: min(100%, 590px);
+  justify-self: center;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 26px;
+  column-gap: 8px;
+  row-gap: 5px;
+}
+
+#gameScreen .y-axis {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);
+  align-items: center;
+  justify-items: end;
+  padding-right: 2px;
+  color: #5b4637;
+  font: 700 12px/1 Arial, sans-serif;
+}
+
+#gameScreen .game-stage-wrap {
+  grid-column: 2;
+  grid-row: 1;
+  width: min(100%, 480px);
+  justify-self: center;
+}
+
+#gameScreen #gameContainer {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  background: #f4d6a0;
+  overflow: hidden;
+}
+
+#gameScreen #gameContainer canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  image-rendering: pixelated;
+}
+
+#gameScreen .x-axis {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  align-items: start;
+  justify-items: center;
+  padding-top: 2px;
+  color: #5b4637;
+  font: 700 12px/1 Arial, sans-serif;
+}
+
+#gameScreen .x-axis span,
+#gameScreen .y-axis span {
+  user-select: none;
+  pointer-events: none;
+}
+
+#gameScreen .guidance-panel {
+  grid-area: guide;
+  width: 100%;
+  min-height: 180px;
+}
+
+#gameScreen .guidance-panel .panel-heading {
+  min-height: 52px;
+}
+
+#gameScreen .guidance-content {
+  min-height: 135px;
+  grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr);
+  padding: 14px 16px;
+}
+
+#gameScreen .command-panel {
+  grid-area: command;
+  width: 100%;
+  min-height: 180px;
+  height: auto;
+  overflow: hidden;
+  background: #111827;
+  border: 2px solid #374151;
+  border-radius: 12px;
+}
+
+#gameScreen .command-curtain-bar {
+  min-height: 52px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  color: #d1fae5;
+  background: #111827;
+  border-bottom: 1px solid #374151;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+#gameScreen .command-curtain-bar h2 {
+  margin: 0;
+  font: 700 16px/1 Consolas, "Courier New", monospace;
+}
+
+#gameScreen .curtain-chevron {
+  font-size: 20px;
+  color: #34d399;
+}
+
+#gameScreen .command-curtain-body {
+  background: #0b1220;
+}
+
+#gameScreen .command-panel textarea {
+  display: block;
+  min-height: 250px;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  resize: vertical;
+  background: #0b1220;
+  color: #d1fae5;
+  caret-color: #34d399;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+#gameScreen .command-panel .editor-actions {
+  border-top: 1px solid #374151;
+  background: #111827;
+}
+
+#gameScreen .command-panel .console-title {
+  background: #111827;
+  color: #6ee7b7;
+  border-top: 1px solid #374151;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+#gameScreen .command-panel .console {
+  background: #050b14;
+  color: #a7f3d0;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+@media (max-width: 900px) {
+  #gameScreen .pkr-game-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "game"
+      "guide"
+      "command";
+  }
+
+  #gameScreen .pkr-game-body {
+    grid-template-columns: 145px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  #gameScreen {
+    padding: 10px;
+  }
+
+  #gameScreen .pkr-game-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  #gameScreen .pkr-game-body {
+    grid-template-columns: 1fr;
+    padding: 15px;
+  }
+
+  #gameScreen .player-info-panel {
+    min-height: auto;
+  }
+
+  #gameScreen .coordinate-board {
+    width: min(100%, 530px);
+  }
+}
