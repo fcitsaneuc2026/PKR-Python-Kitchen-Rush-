@@ -906,3 +906,8 @@ html, body {
   position: relative;
   z-index: 2;
 }
+
+/* Part 3: keep the delivery car's interaction area stable during drive-away. */
+#gameScreen .delivery-car.drive-away {
+  pointer-events: none;
+}
