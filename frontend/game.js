@@ -228,7 +228,7 @@ class KitchenScene extends Phaser.Scene {
     tableCoordinates.forEach(({column,row})=>{
       const p=gridToPixel(column,row);
       this.tableSprites.push(
-        this.add.image(p.x,p.y,"table").setDisplaySize(TILE_SIZE,TILE_SIZE).setDepth(1)
+        this.add.image(p.x,p.y,"table").setDisplaySize(TILE_SIZE + 4,TILE_SIZE + 4).setDepth(1)
       );
     });
 
@@ -238,10 +238,14 @@ class KitchenScene extends Phaser.Scene {
       const texture=station.kind==="chest"?station.closedTexture:station.frameTextures[0];
       const size=44;
 
+      const hoverSize=Math.round(size * 1.22);
       const sprite=this.add.image(station.x,station.y,texture)
+        .setOrigin(0.5)
         .setDisplaySize(size,size)
         .setDepth(2)
         .setInteractive({ useHandCursor:true });
+      sprite.setData("restSize", size);
+      sprite.setData("hoverSize", hoverSize);
 
       // Labels are hidden until the player hovers the station.
       const label=this.add.text(station.x,station.y,station.label,{
@@ -255,27 +259,25 @@ class KitchenScene extends Phaser.Scene {
 
       sprite.on("pointerover",()=>{
         label.setVisible(true);
+        label.setAlpha(1);
+        this.tweens.killTweensOf(sprite);
         this.tweens.add({
           targets:sprite,
-          scaleX:1.15,
-          scaleY:1.15,
+          displayWidth:sprite.getData("hoverSize"),
+          displayHeight:sprite.getData("hoverSize"),
           duration:140,
           ease:"Back.Out"
-        });
-        this.tweens.add({
-          targets:label,
-          alpha:1,
-          duration:120
         });
       });
 
       sprite.on("pointerout",()=>{
+        this.tweens.killTweensOf(sprite);
         this.tweens.add({
           targets:sprite,
-          scaleX:1,
-          scaleY:1,
+          displayWidth:sprite.getData("restSize"),
+          displayHeight:sprite.getData("restSize"),
           duration:140,
-          ease:"Back.Out"
+          ease:"Sine.easeOut"
         });
         this.tweens.add({
           targets:label,
@@ -311,8 +313,14 @@ class KitchenScene extends Phaser.Scene {
   showChestAnimation(name){
     const station=stations[name],sprite=this.stationSprites?.[name];
     if(!station||!sprite)return;
+    const rest=sprite.getData("restSize")||44;
     sprite.setTexture(station.openTexture);
-    this.time.delayedCall(450,()=>sprite?.setTexture(station.closedTexture));
+    sprite.setDisplaySize(rest,rest);
+    this.time.delayedCall(450,()=>{
+      if(!sprite)return;
+      sprite.setTexture(station.closedTexture);
+      sprite.setDisplaySize(rest,rest);
+    });
   }
   showToolAnimation(name){
     const station=stations[name] || stationForRole(name);
@@ -320,11 +328,14 @@ class KitchenScene extends Phaser.Scene {
     const id=Object.keys(stations).find(key=>stations[key]===station);
     const sprite=this.stationSprites?.[id];
     if(!sprite)return Promise.resolve();
+    const rest=sprite.getData("restSize")||44;
     sprite.setTexture(station.frameTextures[0]);
+    sprite.setDisplaySize(rest,rest);
     return new Promise(resolve=>{
       station.frameTextures.slice(1).forEach((texture,index)=>{
         this.time.delayedCall((index+1)*250,()=>{
           sprite.setTexture(texture);
+          sprite.setDisplaySize(rest,rest);
           if(index===station.frameTextures.length-2)resolve();
         });
       });
