@@ -675,6 +675,8 @@ html, body {
   grid-area: guide;
   width: 100%;
   min-height: 180px;
+  max-height: 400px;
+  overflow: hidden;
 }
 
 #gameScreen .guidance-panel .panel-heading {
@@ -682,8 +684,8 @@ html, body {
 }
 
 #gameScreen .guidance-content {
-  min-height: 135px;
-  grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr);
+  min-height: 260px;
+  grid-template-columns: minmax(160px, .95fr) minmax(0, 1.15fr);
   padding: 14px 16px;
 }
 
@@ -1451,13 +1453,30 @@ html, body {
 }
 
 #gameScreen .pkr-game-stage .error-flash.is-on {
-  animation: pkrErrorFlash 0.7s ease-in-out;
+  animation: pkrErrorFlash 1s ease-in-out;
 }
 
 @keyframes pkrErrorFlash {
   0% { opacity: 0; }
-  28% { opacity: 1; }
+  18% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+#gameScreen .pkr-game-stage.is-shaking {
+  animation: pkrKitchenShake 1s ease-in-out;
+}
+
+@keyframes pkrKitchenShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-7px, 3px) rotate(-0.5deg); }
+  20% { transform: translate(8px, -3px) rotate(0.6deg); }
+  30% { transform: translate(-6px, -2px) rotate(-0.4deg); }
+  40% { transform: translate(7px, 2px) rotate(0.5deg); }
+  50% { transform: translate(-5px, 3px); }
+  60% { transform: translate(5px, -2px); }
+  70% { transform: translate(-3px, 2px); }
+  80% { transform: translate(3px, -1px); }
+  90% { transform: translate(-2px, 0); }
 }
 
 /* =========================================================
@@ -1634,3 +1653,105 @@ html, body {
 #gameScreen .tree-6 { left: 83% !important; top: 83% !important; }
 #gameScreen .rock-1 { left: 15% !important; top: 12% !important; }
 #gameScreen .rock-2 { left: 86% !important; top: 61% !important; }
+
+#gameScreen .visual-guide {
+  min-height: 0;
+  max-height: 268px;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 8px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+#gameScreen .guide-demo {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#gameScreen .guide-demo[hidden] {
+  display: none !important;
+}
+
+#gameScreen .guide-mini-wrap {
+  display: grid;
+  grid-template-columns: 16px 200px;
+  gap: 3px;
+  align-items: stretch;
+  justify-content: start;
+}
+
+#gameScreen .guide-mini-y,
+#gameScreen .guide-mini-x {
+  font-size: 8px;
+  line-height: 1;
+  color: #765f4e;
+  font-weight: 700;
+}
+
+#gameScreen .guide-mini-y {
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);
+  text-align: right;
+  align-items: center;
+  height: 200px;
+}
+
+#gameScreen .guide-mini-x {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  margin-left: 19px;
+  width: 200px;
+  text-align: center;
+  margin-top: 2px;
+}
+
+#gameScreen .guide-mini-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-rows: repeat(10, minmax(0, 1fr));
+  width: 200px;
+  height: 200px;
+  overflow: hidden;
+  background: #F9E6BD;
+  border: 2px solid #8B5A3C;
+}
+
+#gameScreen .guide-mini-cell {
+  border: 1px solid #D7B77F;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#gameScreen .guide-mini-cell img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+#gameScreen .guide-mini-cell.is-goal {
+  background: rgba(242, 140, 40, 0.4);
+  box-shadow: inset 0 0 0 2px #F28C28;
+}
+
+#gameScreen .guide-mini-player {
+  position: absolute;
+  width: 12%;
+  height: 12%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  pointer-events: none;
+  image-rendering: pixelated;
+  transition: left 0.22s linear, top 0.22s linear;
+}
