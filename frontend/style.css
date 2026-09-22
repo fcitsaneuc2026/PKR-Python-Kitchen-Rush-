@@ -1315,3 +1315,39 @@ html, body {
     align-items: center;
   }
 }
+
+#gameScreen .guide-tabs {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: visible;
+  border-bottom: 0;
+}
+
+#gameScreen .guide-tabs .tab {
+  border: 2px solid var(--wood-light);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+#gameScreen .pkr-game-stage .error-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  border-radius: 8px;
+  background: rgba(210, 36, 36, 0.42);
+  opacity: 0;
+}
+
+#gameScreen .pkr-game-stage .error-flash.is-on {
+  animation: pkrErrorFlash 0.7s ease-in-out;
+}
+
+@keyframes pkrErrorFlash {
+  0% { opacity: 0; }
+  28% { opacity: 1; }
+  100% { opacity: 0; }
+}

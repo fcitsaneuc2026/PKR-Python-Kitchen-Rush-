@@ -114,6 +114,7 @@
     </div>
   </div>
   <div id="gameContainer"></div>
+                <div id="errorFlash" class="error-flash" aria-hidden="true"></div>
                 <button id="deliveryTest" type="button" hidden>Test delivery</button>
 </div>
                 <div class="x-axis" aria-hidden="true">
@@ -140,14 +141,23 @@
             <h2>Guide Window</h2>
           </div>
           <div class="guidance-content">
+            <div class="guide-tabs tabs" role="tablist" aria-label="Command guides">
+              <button type="button" class="tab active" data-tab="movement">Move</button>
+              <button type="button" class="tab" data-tab="take">Take</button>
+              <button type="button" class="tab" data-tab="cook">Cook</button>
+              <button type="button" class="tab" data-tab="cut">Cut</button>
+              <button type="button" class="tab" data-tab="collect">Collect</button>
+              <button type="button" class="tab" data-tab="wait">Wait</button>
+              <button type="button" class="tab" data-tab="status">Status</button>
+            </div>
             <div class="visual-guide" id="visualGuide">
               <div class="guide-character">🧑‍🍳</div>
-              <div class="guide-action" id="guideAction">Move close to a station</div>
+              <div class="guide-action" id="guideAction">Walk on the 10 × 10 grid</div>
             </div>
             <div class="command-guide">
-              <h3>Character Visual Guidance</h3>
-              <p id="guideText">Move close to a target coordinate. Interaction works when you are close enough.</p>
-              <pre id="guideCode">move_to(10, 1)</pre>
+              <h3>Command Guidance</h3>
+              <p id="guideText">Bottom-left is (1, 1). Top-right is (10, 10). You cannot stand on a table or station. Stand on a neighbour tile to use it.</p>
+              <pre id="guideCode">move_to(3, 9)</pre>
             </div>
           </div>
         </section>
@@ -159,11 +169,13 @@
             <span class="curtain-chevron">⌃</span>
           </div>
           <div id="commandCurtainBody" class="command-curtain-body">
-            <textarea id="codeEditor" spellcheck="false"># Collect and cook a bun
-move_to(10, 1)
+            <textarea id="codeEditor" spellcheck="false"># Take a bun, start cooking, then come back to collect it
+move_to(3, 9)
 take("bun")
-move_to(5, 8)
-cook("bun")</textarea>
+move_to(4, 3)
+cook("bun")
+wait(1)
+collect()</textarea>
             <div class="editor-actions">
               <button id="runBtn" class="primary-btn" disabled>▶ Run Python</button>
               <button id="clearBtn" class="secondary-btn">Clear</button>

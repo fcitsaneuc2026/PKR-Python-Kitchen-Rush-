@@ -49,6 +49,13 @@ const stations = {
   cuttingBoard3: { column: 7, row: 6, ...gridToPixel(7, 6), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] }
 };
 
+function resetStationWork() {
+  Object.values(stations).forEach(station => {
+    if (station.kind === "tool") station.work = { phase: "empty", item: null };
+  });
+}
+resetStationWork();
+
 // Every table/station coordinate is a blocked player tile.
 // The player must stand on an adjacent tile to use a station.
 const tableCoordinates = [
@@ -81,8 +88,22 @@ const assetPaths = {
   tomatoUncut: "/static/assets/tomato/tomato_uncut.png", tomatoSliced: "/static/assets/tomato/tomato_sliced.png",
   panEmpty: "/static/assets/cooking_pan/pan_empty.png", pan25: "/static/assets/cooking_pan/pan_25%25.png", pan50: "/static/assets/cooking_pan/pan_50%25.png", pan75: "/static/assets/cooking_pan/pan_75%25.png", panComplete: "/static/assets/cooking_pan/pan_complete.png",
   table: "/static/assets/table/table.png",
-  boardEmpty: "/static/assets/cutting_board/cutting_board_empty.png", board25: "/static/assets/cutting_board/cutting_board_25%25.png", board50: "/static/assets/cutting_board/cutting_board_50%25.png", board75: "/static/assets/cutting_board/cutting_board_75%25.png", boardComplete: "/static/assets/cutting_board/cutting_board_complete.png"
+  boardEmpty: "/static/assets/cutting_board/cutting_board_empty.png", board25: "/static/assets/cutting_board/cutting_board_25%25.png", board50: "/static/assets/cutting_board/cutting_board_50%25.png", board75: "/static/assets/cutting_board/cutting_board_75%25.png", boardComplete: "/static/assets/cutting_board/cutting_board_complete.png",
+  playerUp: "/static/assets/player/player_up.png",
+  playerDown: "/static/assets/player/player_down.png",
+  playerLeft: "/static/assets/player/player_left.png",
+  playerRight: "/static/assets/player/player_right.png"
 };
+
+const PLAYER_DISPLAY_SIZE = 52;
+
+function playerFacingTexture(from, to) {
+  const dc = Number(to.column) - Number(from.column);
+  const dr = Number(to.row) - Number(from.row);
+  if (dc === 0 && dr === 0) return null;
+  if (Math.abs(dc) > Math.abs(dr)) return dc > 0 ? "playerRight" : "playerLeft";
+  return dr > 0 ? "playerUp" : "playerDown";
+}
 
 const recipes = { burger: { name: "Classic Burger", ingredients: ["bun", "patty", "lettuce"], emoji: "🍔" } };
 const itemInfo = {
@@ -143,34 +164,55 @@ function newOrder() {
   $("orderCard").innerHTML = `<strong>Order #${state.currentOrder.id}: ${state.currentOrder.emoji} ${state.currentOrder.name}</strong><div>Prepare: bun + patty + lettuce + tomato</div><div>Plating and serving will be added in the next level.</div>`;
 }
 function setGuide(tab) {
-  const ingredientGuides = {
-    bun: ["Collect an uncooked bun", "Move next to the Bun Chest at (3, 10), then take a bun.", 'move_to(3, 9)\ntake("bun")'],
-    patty: ["Collect an uncooked patty", "Move next to the Patty Chest at (4, 10), then take a patty.", 'move_to(4, 9)\ntake("patty")'],
-    lettuce: ["Collect uncut lettuce", "Move next to the Lettuce Chest at (1, 10), then take lettuce.", 'move_to(1, 9)\ntake("lettuce")'],
-    tomato: ["Collect an uncut tomato", "Move next to the Tomato Chest at (2, 10), then take a tomato.", 'move_to(2, 9)\ntake("tomato")'],
-    cook: ["Cook a bun or patty", "Move next to any Cooking Pan at (4,4), (4,5), or (4,6). Cooking takes one second.", 'move_to(4, 3)\ncook("bun")'],
-    cut: ["Chop lettuce or slice tomato", "Move next to any Cutting Board at (7,4), (7,5), or (7,6). Cutting takes one second.", 'move_to(7, 3)\ncut("lettuce")']
-  };
-  if (ingredientGuides[tab]) {
-    const [action, text, code] = ingredientGuides[tab];
-    $("guideAction").textContent = action; $("guideText").textContent = text; $("guideCode").textContent = code;
-    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
-    return;
-  }
   const guides = {
-    movement: ["Move on the 10 × 10 grid", "Bottom-left is (1,1). Top-right is (10,10).", "move_to(10, 1)"],
-    fridge: ["Patty / lettuce", "The full kitchen will be added after the map and table coordinates are provided.", 'take("patty")\ntake("lettuce")'],
-    cutting: ["Cut lettuce", "Command kept for the burger level; three Cutting Boards are available at (7,4), (7,5), and (7,6).", 'cut("lettuce")'],
-    fry: ["Cook bun or patty", "Command kept for the burger level; three Cooking Pans are available at (4,4), (4,5), and (4,6).", 'fry("bun")'],
-    plate: ["Plate ingredients", "Command kept for the burger level; the plate station will be placed after the map is provided.", 'plate("bun")'],
-    wash: ["Wash a plate", "Command kept for the burger level; the sink will be placed after the map is provided.", "wash_plate()"],
-    serve: ["Serve the burger", "Command kept for the burger level; the serving counter will be placed after the map is provided.", "serve()"]
+    movement: [
+      "Walk on the 10 × 10 grid",
+      "Bottom-left is (1, 1). Top-right is (10, 10). You cannot stand on a table or station. Stand on a neighbour tile to use it.",
+      "move_to(3, 9)"
+    ],
+    take: [
+      "Take from a chest",
+      "Stand next to Lettuce (1, 10), Tomato (2, 10), Bun (3, 10), or Patty (4, 10). Needs a free backpack slot.",
+      'move_to(3, 9)\ntake("bun")'
+    ],
+    cook: [
+      "Start cooking",
+      "Stand next to a free Cooking Pan at (4, 4), (4, 5), or (4, 6). The raw bun or patty leaves your backpack and stays on the pan. You can walk away while it cooks.",
+      'move_to(4, 3)\ncook("bun")'
+    ],
+    cut: [
+      "Start cutting",
+      "Stand next to a free Cutting Board at (7, 4), (7, 5), or (7, 6). Lettuce or tomato stays on the board. You can walk away while it finishes.",
+      'move_to(7, 3)\ncut("lettuce")'
+    ],
+    collect: [
+      "Pick up finished food",
+      "After a pan or board is done, stand on a neighbour tile and collect(). The cooked or chopped item goes into your backpack. The station must be finished, and you need a free slot.",
+      "move_to(4, 3)\ncollect()"
+    ],
+    wait: [
+      "Pause the script",
+      "Optional wait, for example while a station finishes, before collect().",
+      "wait(1)"
+    ],
+    status: [
+      "Check your state",
+      "Prints your grid position, backpack, and current order in Command output.",
+      "status()"
+    ]
   };
-  const [action, text, code] = guides[tab];
-  $("guideAction").textContent = action; $("guideText").textContent = text; $("guideCode").textContent = code;
-  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  const guide = guides[tab] || guides.movement;
+  const [action, text, code] = guide;
+  $("guideAction").textContent = action;
+  $("guideText").textContent = text;
+  $("guideCode").textContent = code;
+  document.querySelectorAll(".guide-tabs .tab").forEach(button => {
+    button.classList.toggle("active", button.dataset.tab === (guides[tab] ? tab : "movement"));
+  });
 }
-document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setGuide(b.dataset.tab)));
+document.querySelectorAll(".guide-tabs .tab").forEach(button => {
+  button.addEventListener("click", () => setGuide(button.dataset.tab));
+});
 
 function showScreen(id) {
   ["mainMenu", "nameScreen", "gameScreen", "resultScreen", "leaderboardScreen"].forEach(screenId => {
@@ -215,8 +257,24 @@ class KitchenScene extends Phaser.Scene {
   create(){
     state.scene=this; this.cameras.main.setBackgroundColor("#F4D6A0"); this.drawKitchen();
     const start=gridToPixel(2,2); state.player={x:start.x,y:start.y};
-    this.playerSprite=this.add.rectangle(start.x,start.y,28,28,0x26364A).setStrokeStyle(3,0xF6C945).setDepth(5);
+    this.playerSprite=this.add.image(start.x,start.y,"playerDown").setDepth(5);
+    this.applyPlayerSize();
     updateHUD();
+  }
+  applyPlayerSize(){
+    if(!this.playerSprite)return;
+    this.playerSprite.setOrigin(0.5,0.72).setDisplaySize(PLAYER_DISPLAY_SIZE,PLAYER_DISPLAY_SIZE);
+  }
+  faceToward(target){
+    if(!this.playerSprite||!target)return;
+    const from=pixelToGrid(this.playerSprite.x,this.playerSprite.y);
+    const to=target.column!=null
+      ? {column:target.column,row:target.row}
+      : pixelToGrid(target.x,target.y);
+    const texture=playerFacingTexture(from,to);
+    if(!texture)return;
+    this.playerSprite.setTexture(texture);
+    this.applyPlayerSize();
   }
   drawKitchen(){
     this.add.rectangle(240,240,480,480,0xF9E6BD).setStrokeStyle(4,0x8B5A3C);
@@ -238,10 +296,14 @@ class KitchenScene extends Phaser.Scene {
       const texture=station.kind==="chest"?station.closedTexture:station.frameTextures[0];
       const size=44;
 
+      const hoverSize=Math.round(size * 1.22);
       const sprite=this.add.image(station.x,station.y,texture)
+        .setOrigin(0.5)
         .setDisplaySize(size,size)
         .setDepth(2)
         .setInteractive({ useHandCursor:true });
+      sprite.setData("restSize", size);
+      sprite.setData("hoverSize", hoverSize);
 
       // Labels are hidden until the player hovers the station.
       const label=this.add.text(station.x,station.y,station.label,{
@@ -255,27 +317,25 @@ class KitchenScene extends Phaser.Scene {
 
       sprite.on("pointerover",()=>{
         label.setVisible(true);
+        label.setAlpha(1);
+        this.tweens.killTweensOf(sprite);
         this.tweens.add({
           targets:sprite,
-          scaleX:1.15,
-          scaleY:1.15,
+          displayWidth:sprite.getData("hoverSize"),
+          displayHeight:sprite.getData("hoverSize"),
           duration:140,
           ease:"Back.Out"
-        });
-        this.tweens.add({
-          targets:label,
-          alpha:1,
-          duration:120
         });
       });
 
       sprite.on("pointerout",()=>{
+        this.tweens.killTweensOf(sprite);
         this.tweens.add({
           targets:sprite,
-          scaleX:1,
-          scaleY:1,
+          displayWidth:sprite.getData("restSize"),
+          displayHeight:sprite.getData("restSize"),
           duration:140,
-          ease:"Back.Out"
+          ease:"Sine.easeOut"
         });
         this.tweens.add({
           targets:label,
@@ -292,10 +352,11 @@ class KitchenScene extends Phaser.Scene {
   movePlayerTo(x,y){
     const target=pixelToGrid(x,y);
     if(isBlockedCoordinate(target.column,target.row)){
-      return Promise.reject(new Error(`(${target.column}, ${target.row}) is occupied by a table/station. Stand next to it instead.`));
+      fail();
     }
     return new Promise(resolve=>{
       const from={x:this.playerSprite.x,y:this.playerSprite.y};
+      this.faceToward({x,y});
       const duration=Math.max(180,distance(from,{x,y})*4);
       this.tweens.add({targets:this.playerSprite,x,y,duration,ease:"Sine.easeInOut",
         onUpdate:()=>{state.player.x=this.playerSprite.x;state.player.y=this.playerSprite.y;updateHUD();},
@@ -311,8 +372,14 @@ class KitchenScene extends Phaser.Scene {
   showChestAnimation(name){
     const station=stations[name],sprite=this.stationSprites?.[name];
     if(!station||!sprite)return;
+    const rest=sprite.getData("restSize")||44;
     sprite.setTexture(station.openTexture);
-    this.time.delayedCall(450,()=>sprite?.setTexture(station.closedTexture));
+    sprite.setDisplaySize(rest,rest);
+    this.time.delayedCall(450,()=>{
+      if(!sprite)return;
+      sprite.setTexture(station.closedTexture);
+      sprite.setDisplaySize(rest,rest);
+    });
   }
   showToolAnimation(name){
     const station=stations[name] || stationForRole(name);
@@ -320,113 +387,195 @@ class KitchenScene extends Phaser.Scene {
     const id=Object.keys(stations).find(key=>stations[key]===station);
     const sprite=this.stationSprites?.[id];
     if(!sprite)return Promise.resolve();
+    const rest=sprite.getData("restSize")||44;
     sprite.setTexture(station.frameTextures[0]);
+    sprite.setDisplaySize(rest,rest);
     return new Promise(resolve=>{
       station.frameTextures.slice(1).forEach((texture,index)=>{
         this.time.delayedCall((index+1)*250,()=>{
           sprite.setTexture(texture);
+          sprite.setDisplaySize(rest,rest);
           if(index===station.frameTextures.length-2)resolve();
         });
       });
     });
   }
+  runToolJob(id,preparedStatus){
+    const station=stations[id];
+    if(!station)return;
+    this.showToolAnimation(id).then(()=>{
+      if(!station.work||station.work.phase!=="busy")return;
+      station.work.phase="ready";
+      if(station.work.item)station.work.item.status=preparedStatus;
+    });
+  }
+  resetToolVisual(id){
+    const station=stations[id],sprite=this.stationSprites?.[id];
+    if(!station||!sprite)return;
+    const rest=sprite.getData("restSize")||44;
+    sprite.setTexture(station.frameTextures[0]);
+    sprite.setDisplaySize(rest,rest);
+  }
+}
+
+function fail() {
+  const error = new Error("rule");
+  error.ruleFail = true;
+  throw error;
+}
+function flashError() {
+  const el = $("errorFlash");
+  if (!el) return;
+  el.classList.remove("is-on");
+  void el.offsetWidth;
+  el.classList.add("is-on");
+}
+elErrorFlashCleanup();
+function elErrorFlashCleanup() {
+  document.addEventListener("animationend", event => {
+    if (event.target && event.target.id === "errorFlash") event.target.classList.remove("is-on");
+  });
+}
+function backpackHasSpace() {
+  return state.backpack.some(item => !item);
+}
+function nearbyStations(role) {
+  if (!state.player) return [];
+  return Object.values(stations).filter(station => {
+    if (role && station.role !== role) return false;
+    return distance(state.player, station) <= 48;
+  });
+}
+function nearestStation(list) {
+  return list.reduce((nearest, station) => distance(state.player, station) < distance(state.player, nearest) ? station : nearest);
+}
+function stationId(station) {
+  return Object.keys(stations).find(key => stations[key] === station);
 }
 
 function addItem(type,status="raw"){
-  const index=state.backpack.findIndex(x=>!x); if(index===-1)throw new Error("Backpack is full. Maximum 3 items.");
+  const index=state.backpack.findIndex(x=>!x); if(index===-1)fail();
   const info=itemInfo[type]; state.backpack[index]={type,status,emoji:status==="prepared"?info.cooked:info.raw};renderBackpack();
 }
 function findItem(type){return state.backpack.find(x=>x&&x.type===type);}
-function removeItem(type){const i=state.backpack.findIndex(x=>x&&x.type===type);if(i===-1)throw new Error(`You do not have ${type}.`);const item=state.backpack[i];state.backpack[i]=null;renderBackpack();return item;}
+function removeItem(type){const i=state.backpack.findIndex(x=>x&&x.type===type);if(i===-1)fail();const item=state.backpack[i];state.backpack[i]=null;renderBackpack();return item;}
 function requireNear(name){
   const station=stations[name] || stationForRole(name);
-  if(!station) throw new Error(`Unknown station: ${name}.`);
-  if(!nearStation(name)) throw new Error(`Move close to ${station.label} at (${station.column}, ${station.row}) first.`);
+  if(!station) fail();
+  if(!nearStation(name)) fail();
+  state.scene?.faceToward(station);
+  return station;
 }
-function requireItem(type){const item=findItem(type);if(!item)throw new Error(`You do not have ${type}.`);return item;}
+function requireItem(type){const item=findItem(type);if(!item)fail();return item;}
 
 function addIngredient(type,status){
   const index=state.backpack.findIndex(item=>!item);
-  if(index===-1)throw new Error(`Backpack is full. Maximum ${state.backpack.length} items.`);
-  if(!ingredientInfo[type]?.states[status])throw new Error("Unknown ingredient state.");
+  if(index===-1)fail();
+  if(!ingredientInfo[type]?.states[status])fail();
   state.backpack[index]={type,status};
   renderIngredientBackpack();
 }
 function removeIngredient(type,status){
   const index=state.backpack.findIndex(item=>item&&item.type===type&&(!status||item.status===status));
-  if(index===-1)throw new Error(`You do not have ${type}.`);
+  if(index===-1)fail();
   const item=state.backpack[index];
   state.backpack[index]=null;
   renderIngredientBackpack();
   return item;
 }
-function prepareIngredient(type,stationName){
-  const info=ingredientInfo[type];
+function startToolWork(type,role){
   return action(async()=>{
-    requireNear(stationName);
+    const info=ingredientInfo[type];
+    const allowed=role==="pan"?["bun","patty"]:["lettuce","tomato"];
+    if(!info||!allowed.includes(type))fail();
+    const nearby=nearbyStations(role);
+    if(!nearby.length)fail();
+    const empty=nearby.filter(station=>station.work?.phase==="empty");
+    if(!empty.length)fail();
     const rawItem=state.backpack.find(item=>item&&item.type===type&&item.status===info.rawStatus);
-    if(!rawItem){
-      const item=findItem(type);
-      if(!item)throw new Error(`You do not have ${info.label.toLowerCase()}.`);
-      throw new Error(`Your ${info.label.toLowerCase()} is already ${info.states[item.status].label.toLowerCase()}.`);
-    }
+    if(!rawItem)fail();
+    const station=nearestStation(empty);
+    state.scene.faceToward(station);
     removeIngredient(type,info.rawStatus);
-    log(`${stationName==="pan"?"Cooking":"Cutting"} ${info.label.toLowerCase()}...`);
-    await state.scene.showToolAnimation(stationName);
-    addIngredient(type,info.preparedStatus);
-    state.scene.showItemEffect(`${info.label} ${info.states[info.preparedStatus].label.toLowerCase()}!`,"");
-    log(`${info.label} is ${info.states[info.preparedStatus].label.toLowerCase()}.`);
+    station.work={phase:"busy",item:{type,status:info.rawStatus}};
+    const id=stationId(station);
+    log(role==="pan"?`Started cooking ${info.label.toLowerCase()}.`:`Started cutting ${info.label.toLowerCase()}.`);
+    state.scene.runToolJob(id,info.preparedStatus);
   });
 }
 
-// Every game action is queued. A new command cannot start until the previous
-// movement/animation/action has finished. This prevents command/game desync.
-function action(fn){const run=state.actionQueue.then(fn);state.actionQueue=run.catch(()=>{});return run;}
+// Every game action is queued. Cook/cut start the station and return,
+// so the next Python line can run while the animation continues.
+function action(fn){
+  const run=state.actionQueue.then(async()=>{
+    try{await fn();}
+    catch(error){
+      if(error&&error.ruleFail){flashError();return;}
+      throw error;
+    }
+  });
+  state.actionQueue=run.catch(()=>{});
+  return run;
+}
 
 function executeGameCommand(name,args){
-  if(state.gameEnded)throw new Error("The game has ended.");
+  if(state.gameEnded)fail();
   if(name==="fry")name="cook";
   if(name==="take"){
     const type=String(args[0]);
-    if(!ingredientInfo[type])throw new Error('Available ingredients are "bun", "patty", "lettuce", and "tomato".');
     return action(async()=>{
+      if(!ingredientInfo[type])fail();
+      if(!backpackHasSpace())fail();
       requireNear(type);
       state.scene.showChestAnimation(type);
       await new Promise(resolve=>state.scene.time.delayedCall(450,resolve));
       addIngredient(type,ingredientInfo[type].rawStatus);
       state.scene.showItemEffect(`Took ${ingredientInfo[type].label.toLowerCase()}.`,"");
-      log(`Collected ${ingredientInfo[type].rawStatus} ${ingredientInfo[type].label.toLowerCase()}.`);
+      log(`Took ${ingredientInfo[type].rawStatus} ${ingredientInfo[type].label.toLowerCase()}.`);
     });
   }
-  if(name==="cook"){
-    const type=String(args[0]);
-    if(!["bun","patty"].includes(type))throw new Error('cook() can only prepare "bun" or "patty" on the Cooking Pan.');
-    return prepareIngredient(type,"pan");
-  }
-  if(name==="cut"){
-    const type=String(args[0]);
-    if(!["lettuce","tomato"].includes(type))throw new Error('cut() can only prepare "lettuce" or "tomato" on the Cutting Board.');
-    return prepareIngredient(type,"cuttingBoard");
+  if(name==="cook")return startToolWork(String(args[0]),"pan");
+  if(name==="cut")return startToolWork(String(args[0]),"cuttingBoard");
+  if(name==="collect"){
+    return action(async()=>{
+      const nearby=nearbyStations("pan").concat(nearbyStations("cuttingBoard"));
+      if(!nearby.length)fail();
+      const ready=nearby.filter(station=>station.work?.phase==="ready"&&station.work.item);
+      if(!ready.length)fail();
+      if(!backpackHasSpace())fail();
+      const station=nearestStation(ready);
+      const item=station.work.item;
+      state.scene.faceToward(station);
+      addIngredient(item.type,item.status);
+      station.work={phase:"empty",item:null};
+      state.scene.resetToolVisual(stationId(station));
+      const info=ingredientInfo[item.type];
+      state.scene.showItemEffect(`Collected ${info.states[item.status].label.toLowerCase()} ${info.label.toLowerCase()}.`,"");
+      log(`Collected ${info.states[item.status].label.toLowerCase()} ${info.label.toLowerCase()}.`);
+    });
   }
   if(name==="move_to"){
     const c=Number(args[0]),r=Number(args[1]);
-    if(!Number.isInteger(c)||!Number.isInteger(r)||c<1||c>10||r<1||r>10)throw new Error("move_to(column, row) uses grid values from 1 to 10. Bottom-left is (1,1), top-right is (10,10).");
-    return action(async()=>{const p=gridToPixel(c,r);await state.scene.movePlayerTo(p.x,p.y);log(`Moved to (${c}, ${r}).`);});
+    return action(async()=>{
+      if(!Number.isInteger(c)||!Number.isInteger(r)||c<1||c>10||r<1||r>10)fail();
+      const p=gridToPixel(c,r);
+      await state.scene.movePlayerTo(p.x,p.y);
+      log(`Moved to (${c}, ${r}).`);
+    });
   }
-  if(name==="take"){
-    const type=String(args[0]);
-    if(type!=="bun")throw new Error("For the current test level, only take(\"bun\") is available. Patty and lettuce will be added with the map.");
-    return action(async()=>{requireNear("bun");state.scene.showBunChestAnimation();await new Promise(r=>setTimeout(r,650));addItem("bun");state.scene.showItemEffect("Took bun","🍞");log("Collected bun.");});
-  }
-  if(name==="cut"||name==="fry"||name==="plate"||name==="wash_plate"||name==="serve"){
-    return action(async()=>{throw new Error(`${name}() is kept for the burger level, but its station has not been placed yet. The table/map coordinates will determine its location.`);});
-  }
+  if(name==="plate"||name==="wash_plate"||name==="serve")return action(async()=>fail());
   if(name==="wait")return action(async()=>{const seconds=Math.max(0,Math.min(10,Number(args[0]||1)));await new Promise(r=>setTimeout(r,seconds*1000));log(`Waited ${seconds} second(s).`);});
   if(name==="status")return action(async()=>{const g=pixelToGrid(state.player.x,state.player.y);log(JSON.stringify({position:[g.column,g.row],backpack:state.backpack,order:state.currentOrder},null,2));});
-  throw new Error(`Unknown game command: ${name}`);
+  fail();
 }
 
-window.execute_game_command=async(name,args)=>executeGameCommand(name,args);
+window.execute_game_command=async(name,args)=>{
+  try{return await executeGameCommand(name,args);}
+  catch(error){
+    if(error&&error.ruleFail){flashError();return;}
+    throw error;
+  }
+};
 
 async function loadPython(){
   try{
@@ -441,6 +590,8 @@ def cook(item):
     return js.execute_game_command("cook", [item])
 def cut(item):
     return js.execute_game_command("cut", [item])
+def collect():
+    return js.execute_game_command("collect", [])
 def fry(item):
     return js.execute_game_command("fry", [item])
 def plate(item):
@@ -469,13 +620,13 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 
 $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
-  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.actionQueue=Promise.resolve();showScreen("gameScreen");
+  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.actionQueue=Promise.resolve();resetStationWork();showScreen("gameScreen");
   if(!state.scene){new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
 });
 $("runBtn").addEventListener("click",runPython);
 $("clearBtn").addEventListener("click",()=>{$("codeEditor").value="";clearLog();});
-$("hintBtn").addEventListener("click",()=>log('Hint: move_to(10, 1), take("bun"), move_to(5, 8), then cook("bun").'));
+$("hintBtn").addEventListener("click",()=>log('Hint: move_to(3, 9), take("bun"), move_to(4, 3), cook("bun"), wait(1), collect()'));
 $("leaderboardBtn").addEventListener("click",showLeaderboard);
 $("backBtn").addEventListener("click",()=>showScreen("resultScreen"));
 $("restartBtn").addEventListener("click",()=>location.reload());
