@@ -32,13 +32,43 @@ function pixelToGrid(x, y) {
 }
 
 const stations = {
-  bun: { column: 10, row: 1, ...gridToPixel(10, 1), label: "Bun Chest", kind: "chest", closedTexture: "bunChestClosed", openTexture: "bunChestOpened" },
-  patty: { column: 10, row: 10, ...gridToPixel(10, 10), label: "Patty Chest", kind: "chest", closedTexture: "pattyChestClosed", openTexture: "pattyChestOpened" },
+  // Ingredient chests sit on the top table row.
   lettuce: { column: 1, row: 10, ...gridToPixel(1, 10), label: "Lettuce Chest", kind: "chest", closedTexture: "lettuceChestClosed", openTexture: "lettuceChestOpened" },
-  tomato: { column: 1, row: 1, ...gridToPixel(1, 1), label: "Tomato Chest", kind: "chest", closedTexture: "tomatoChestClosed", openTexture: "tomatoChestOpened" },
-  pan: { column: 5, row: 8, ...gridToPixel(5, 8), label: "Cooking Pan", kind: "tool", frameTextures: ["panEmpty", "pan25", "pan50", "pan75", "panComplete"] },
-  cuttingBoard: { column: 5, row: 3, ...gridToPixel(5, 3), label: "Cutting Board", kind: "tool", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] }
+  tomato: { column: 2, row: 10, ...gridToPixel(2, 10), label: "Tomato Chest", kind: "chest", closedTexture: "tomatoChestClosed", openTexture: "tomatoChestOpened" },
+  bun: { column: 3, row: 10, ...gridToPixel(3, 10), label: "Bun Chest", kind: "chest", closedTexture: "bunChestClosed", openTexture: "bunChestOpened" },
+  patty: { column: 4, row: 10, ...gridToPixel(4, 10), label: "Patty Chest", kind: "chest", closedTexture: "pattyChestClosed", openTexture: "pattyChestOpened" },
+
+  // Three cooking pans.
+  pan1: { column: 4, row: 4, ...gridToPixel(4, 4), label: "Cooking Pan", kind: "tool", role: "pan", frameTextures: ["panEmpty", "pan25", "pan50", "pan75", "panComplete"] },
+  pan2: { column: 4, row: 5, ...gridToPixel(4, 5), label: "Cooking Pan", kind: "tool", role: "pan", frameTextures: ["panEmpty", "pan25", "pan50", "pan75", "panComplete"] },
+  pan3: { column: 4, row: 6, ...gridToPixel(4, 6), label: "Cooking Pan", kind: "tool", role: "pan", frameTextures: ["panEmpty", "pan25", "pan50", "pan75", "panComplete"] },
+
+  // Three cutting boards.
+  cuttingBoard1: { column: 7, row: 4, ...gridToPixel(7, 4), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] },
+  cuttingBoard2: { column: 7, row: 5, ...gridToPixel(7, 5), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] },
+  cuttingBoard3: { column: 7, row: 6, ...gridToPixel(7, 6), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] }
 };
+
+// Every table/station coordinate is a blocked player tile.
+// The player must stand on an adjacent tile to use a station.
+const tableCoordinates = [
+  ...Array.from({ length: 10 }, (_, i) => ({ column: i + 1, row: 10 })),
+  { column: 4, row: 4 }, { column: 4, row: 5 }, { column: 4, row: 6 },
+  { column: 7, row: 4 }, { column: 7, row: 5 }, { column: 7, row: 6 }
+];
+
+function isBlockedCoordinate(column, row) {
+  return tableCoordinates.some(cell => cell.column === Number(column) && cell.row === Number(row));
+}
+
+function stationForRole(role) {
+  const candidates = Object.values(stations).filter(station => station.role === role);
+  if (!candidates.length) return null;
+  return candidates.reduce((nearest, station) => {
+    if (!state.player) return station;
+    return distance(state.player, station) < distance(state.player, nearest) ? station : nearest;
+  });
+}
 
 const assetPaths = {
   bunChestClosed: "/static/assets/bun/bun_chest_closed.png", bunChestOpened: "/static/assets/bun/bun_chest_opened.png",
@@ -68,7 +98,11 @@ function log(message) {
 }
 function clearLog() { $("consoleOutput").textContent = ""; }
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-function nearStation(name) { return state.player && distance(state.player, stations[name]) <= 48; }
+function nearStation(name) {
+  if (!state.player) return false;
+  const station = stations[name] || stationForRole(name);
+  return !!station && distance(state.player, station) <= 48;
+}
 function updateHUD() {
   $("scoreValue").textContent = state.score;
   $("ordersValue").textContent = state.ordersCompleted;
@@ -109,12 +143,12 @@ function newOrder() {
 }
 function setGuide(tab) {
   const ingredientGuides = {
-    bun: ["Collect an uncooked bun", "Move to the Bun Chest at (10, 1), then take a bun.", 'move_to(10, 1)\ntake("bun")'],
-    patty: ["Collect an uncooked patty", "Move to the Patty Chest at (10, 10), then take a patty.", 'move_to(10, 10)\ntake("patty")'],
-    lettuce: ["Collect uncut lettuce", "Move to the Lettuce Chest at (1, 10), then take lettuce.", 'move_to(1, 10)\ntake("lettuce")'],
-    tomato: ["Collect an uncut tomato", "Move to the Tomato Chest at (1, 1), then take a tomato.", 'move_to(1, 1)\ntake("tomato")'],
-    cook: ["Cook a bun or patty", "Move to the Cooking Pan at (5, 8). Cooking takes one second.", 'move_to(5, 8)\ncook("bun")'],
-    cut: ["Chop lettuce or slice tomato", "Move to the Cutting Board at (5, 3). Cutting takes one second.", 'move_to(5, 3)\ncut("lettuce")']
+    bun: ["Collect an uncooked bun", "Move next to the Bun Chest at (3, 10), then take a bun.", 'move_to(3, 9)\ntake("bun")'],
+    patty: ["Collect an uncooked patty", "Move next to the Patty Chest at (4, 10), then take a patty.", 'move_to(4, 9)\ntake("patty")'],
+    lettuce: ["Collect uncut lettuce", "Move next to the Lettuce Chest at (1, 10), then take lettuce.", 'move_to(1, 9)\ntake("lettuce")'],
+    tomato: ["Collect an uncut tomato", "Move next to the Tomato Chest at (2, 10), then take a tomato.", 'move_to(2, 9)\ntake("tomato")'],
+    cook: ["Cook a bun or patty", "Move next to any Cooking Pan at (4,4), (4,5), or (4,6). Cooking takes one second.", 'move_to(4, 3)\ncook("bun")'],
+    cut: ["Chop lettuce or slice tomato", "Move next to any Cutting Board at (7,4), (7,5), or (7,6). Cutting takes one second.", 'move_to(7, 3)\ncut("lettuce")']
   };
   if (ingredientGuides[tab]) {
     const [action, text, code] = ingredientGuides[tab];
@@ -125,8 +159,8 @@ function setGuide(tab) {
   const guides = {
     movement: ["Move on the 10 × 10 grid", "Bottom-left is (1,1). Top-right is (10,10).", "move_to(10, 1)"],
     fridge: ["Patty / lettuce", "The full kitchen will be added after the map and table coordinates are provided.", 'take("patty")\ntake("lettuce")'],
-    cutting: ["Cut lettuce", "Command kept for the burger level; the cutting station will be placed after the map is provided.", 'cut("lettuce")'],
-    fry: ["Cook bun or patty", "Command kept for the burger level; the cooking station will be placed after the map is provided.", 'fry("bun")'],
+    cutting: ["Cut lettuce", "Command kept for the burger level; three Cutting Boards are available at (7,4), (7,5), and (7,6).", 'cut("lettuce")'],
+    fry: ["Cook bun or patty", "Command kept for the burger level; three Cooking Pans are available at (4,4), (4,5), and (4,6).", 'fry("bun")'],
     plate: ["Plate ingredients", "Command kept for the burger level; the plate station will be placed after the map is provided.", 'plate("bun")'],
     wash: ["Wash a plate", "Command kept for the burger level; the sink will be placed after the map is provided.", "wash_plate()"],
     serve: ["Serve the burger", "Command kept for the burger level; the serving counter will be placed after the map is provided.", "serve()"]
@@ -187,16 +221,30 @@ class KitchenScene extends Phaser.Scene {
     this.add.rectangle(240,240,480,480,0xF9E6BD).setStrokeStyle(4,0x8B5A3C);
     const g=this.add.graphics(); g.lineStyle(1,0xD7B77F,1);
     for(let i=0;i<=10;i++){const p=i*TILE_SIZE;g.lineBetween(p,0,p,480);g.lineBetween(0,p,480,p);}
+
+    // Tables: one continuous row across the top, plus a table under every tool.
+    this.tableSprites=[];
+    tableCoordinates.forEach(({column,row})=>{
+      const p=gridToPixel(column,row);
+      this.tableSprites.push(
+        this.add.image(p.x,p.y,"table").setDisplaySize(TILE_SIZE,TILE_SIZE).setDepth(1)
+      );
+    });
+
     this.stationSprites={};
     Object.entries(stations).forEach(([id,station])=>{
       const texture=station.kind==="chest"?station.closedTexture:station.frameTextures[0];
-      const size=station.kind==="chest"?52:64;
+      const size=station.kind==="chest"?44:44;
       this.stationSprites[id]=this.add.image(station.x,station.y,texture).setDisplaySize(size,size).setDepth(2);
       const labelY=station.row<=5?station.y-31:station.y+31;
       this.add.text(station.x,labelY,station.label,{fontFamily:"Arial",fontSize:"10px",fontStyle:"bold",color:"#3A2A2A",backgroundColor:"#F9E6BD",padding:{x:2,y:1}}).setOrigin(.5).setDepth(3);
     });
   }
   movePlayerTo(x,y){
+    const target=pixelToGrid(x,y);
+    if(isBlockedCoordinate(target.column,target.row)){
+      return Promise.reject(new Error(`(${target.column}, ${target.row}) is occupied by a table/station. Stand next to it instead.`));
+    }
     return new Promise(resolve=>{
       const from={x:this.playerSprite.x,y:this.playerSprite.y};
       const duration=Math.max(180,distance(from,{x,y})*4);
@@ -218,8 +266,11 @@ class KitchenScene extends Phaser.Scene {
     this.time.delayedCall(450,()=>sprite?.setTexture(station.closedTexture));
   }
   showToolAnimation(name){
-    const station=stations[name],sprite=this.stationSprites?.[name];
-    if(!station||!sprite)return Promise.resolve();
+    const station=stations[name] || stationForRole(name);
+    if(!station)return Promise.resolve();
+    const id=Object.keys(stations).find(key=>stations[key]===station);
+    const sprite=this.stationSprites?.[id];
+    if(!sprite)return Promise.resolve();
     sprite.setTexture(station.frameTextures[0]);
     return new Promise(resolve=>{
       station.frameTextures.slice(1).forEach((texture,index)=>{
@@ -238,7 +289,11 @@ function addItem(type,status="raw"){
 }
 function findItem(type){return state.backpack.find(x=>x&&x.type===type);}
 function removeItem(type){const i=state.backpack.findIndex(x=>x&&x.type===type);if(i===-1)throw new Error(`You do not have ${type}.`);const item=state.backpack[i];state.backpack[i]=null;renderBackpack();return item;}
-function requireNear(name){if(!nearStation(name))throw new Error(`Move close to ${stations[name].label} at (${stations[name].column}, ${stations[name].row}) first.`);}
+function requireNear(name){
+  const station=stations[name] || stationForRole(name);
+  if(!station) throw new Error(`Unknown station: ${name}.`);
+  if(!nearStation(name)) throw new Error(`Move close to ${station.label} at (${station.column}, ${station.row}) first.`);
+}
 function requireItem(type){const item=findItem(type);if(!item)throw new Error(`You do not have ${type}.`);return item;}
 
 function addIngredient(type,status){
