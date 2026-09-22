@@ -836,7 +836,7 @@ html, body {
 #gameScreen .delivery-car-3 { right: 48px; top: 364px; }
 
 #gameScreen .delivery-car:hover {
-  transform: scale(1.08);
+  transform: scale(1.22);
   z-index: 30;
 }
 
@@ -853,7 +853,7 @@ html, body {
   right: 47px;
   top: 50%;
   transform: translateY(-50%);
-  width: 118px;
+  width: 148px;
   padding: 8px;
   background: #fffdf5;
   color: #222;
@@ -879,16 +879,26 @@ html, body {
   font-size: 13px;
 }
 
+#gameScreen .completed-burger-slot {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 8px;
+  border: 2px dashed #c4a574;
+  border-radius: 8px;
+  background: #fff8e7;
+}
+
 #gameScreen .order-materials {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  justify-items: center;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 #gameScreen .order-materials img {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   image-rendering: pixelated;
 }
@@ -904,10 +914,10 @@ html, body {
 }
 
 #gameScreen .command-curtain-body {
-  max-height: 700px;
+  max-height: 900px;
   opacity: 1;
   overflow: hidden;
-  transition: max-height .38s ease, opacity .25s ease;
+  transition: max-height .55s cubic-bezier(.22, 1, .36, 1), opacity .4s ease;
 }
 
 #gameScreen .command-curtain-body.curtain-closed {
@@ -1069,7 +1079,7 @@ html, body {
   right:auto;
   left:48px;
   top:50%;
-  width:128px;
+  width:148px;
   border:2px solid #8b6b3e;
   border-radius:10px;
   box-shadow:0 4px 0 rgba(0,0,0,.16);
@@ -1316,6 +1326,104 @@ html, body {
   }
 }
 
+#gameScreen .command-panel {
+  position: relative;
+}
+
+#gameScreen .command-curtain-bar.is-collapsed .curtain-chevron {
+  transform: rotate(180deg);
+}
+
+#gameScreen .curtain-chevron {
+  display: inline-block;
+  transition: transform .4s cubic-bezier(.22, 1, .36, 1);
+}
+
+#gameScreen .command-matrix {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 52px;
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  gap: 2px;
+  padding: 3px;
+  z-index: 8;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  background: #020805;
+  transition: opacity .28s ease, visibility .28s ease;
+}
+
+#gameScreen .command-matrix.is-on {
+  opacity: 1;
+  visibility: visible;
+}
+
+#gameScreen .command-matrix span {
+  display: grid;
+  place-items: center;
+  background: #052816;
+  color: #39ff88;
+  font: 700 11px/1 Consolas, "Courier New", monospace;
+  box-shadow: inset 0 0 0 1px #145c32;
+  transform: scale(0.35, 0);
+  opacity: 0;
+}
+
+#gameScreen .command-matrix.is-closing span {
+  transform-origin: top center;
+  animation: pkrMatrixBoxIn .42s cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+#gameScreen .command-matrix.is-opening span {
+  transform-origin: bottom center;
+  animation: pkrMatrixBoxOut .42s cubic-bezier(.4, 0, .2, 1) forwards;
+}
+
+@keyframes pkrMatrixBoxIn {
+  0% { transform: scale(0.35, 0); opacity: 0; }
+  55% { transform: scale(1.04, 1.06); opacity: 1; }
+  100% { transform: scale(1, 1); opacity: 1; }
+}
+
+@keyframes pkrMatrixBoxOut {
+  0% { transform: scale(1, 1); opacity: 1; }
+  100% { transform: scale(0.35, 0); opacity: 0; }
+}
+
+#gameScreen .guide-tabs .tab {
+  transition: background .28s ease, color .28s ease, transform .22s ease, box-shadow .28s ease, border-color .28s ease;
+}
+
+#gameScreen .guide-tabs .tab:hover {
+  transform: translateY(-1px);
+}
+
+#gameScreen #guideAction,
+#gameScreen #guideText,
+#gameScreen #guideCode {
+  transition: opacity .28s ease, transform .34s cubic-bezier(.22, 1, .36, 1);
+}
+
+#gameScreen .guidance-content.guide-switching #guideAction,
+#gameScreen .guidance-content.guide-switching #guideText,
+#gameScreen .guidance-content.guide-switching #guideCode {
+  animation: none !important;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+#gameScreen .guidance-content.guide-in #guideAction,
+#gameScreen .guidance-content.guide-in #guideText,
+#gameScreen .guidance-content.guide-in #guideCode {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 #gameScreen .guide-tabs {
   grid-column: 1 / -1;
   display: flex;
@@ -1351,3 +1459,178 @@ html, body {
   28% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* =========================================================
+   Game Window content: 20% player info | 80% kitchen
+   Header (title + time/score/orders) is unchanged.
+   ========================================================= */
+#gameScreen .pkr-game-window {
+  display: flex;
+  flex-direction: column;
+  min-height: min(78vh, 920px);
+  overflow: hidden;
+}
+
+#gameScreen .pkr-game-body {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 14px !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+}
+
+#gameScreen .player-info-panel {
+  flex: 0 0 15%;
+  width: 15% !important;
+  max-width: 220px !important;
+  min-width: 168px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  align-self: stretch !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between;
+  gap: 16px !important;
+  padding: 16px 12px !important;
+  box-sizing: border-box;
+  grid-template-columns: none !important;
+}
+
+#gameScreen .player-info-section {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#gameScreen .backpack {
+  grid-template-columns: repeat(2, minmax(72px, 1fr)) !important;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 8px !important;
+}
+
+#gameScreen .backpack .slot {
+  min-height: 58px !important;
+  min-width: 72px;
+}
+
+#gameScreen .backpack .slot img {
+  width: 36px;
+  height: 36px;
+}
+
+#gameScreen .coordinate-board {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) 26px !important;
+  column-gap: 8px;
+  row-gap: 4px;
+  justify-content: stretch !important;
+  align-items: stretch !important;
+}
+
+#gameScreen .y-axis {
+  width: 28px !important;
+  height: 100% !important;
+  grid-template-rows: repeat(10, 1fr) !important;
+}
+
+#gameScreen .game-stage-wrap,
+#gameScreen .pkr-game-stage {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 0;
+}
+
+#gameScreen .game-stage-wrap {
+  justify-self: stretch !important;
+}
+
+#gameScreen .pkr-game-stage {
+  margin: 0 !important;
+  overflow: visible !important;
+}
+
+#gameScreen .environment-decor {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#gameScreen .delivery-lane {
+  left: auto !important;
+  right: 0 !important;
+  width: 16.67% !important;
+  height: 100% !important;
+}
+
+#gameScreen #gameContainer {
+  left: 16.67% !important;
+  top: 0 !important;
+  width: 66.66% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+#gameScreen #gameContainer canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: fill;
+}
+
+#gameScreen .x-axis {
+  width: 66.66% !important;
+  margin-left: 16.67% !important;
+  grid-template-columns: repeat(10, 1fr) !important;
+}
+
+#gameScreen .delivery-car {
+  width: 7% !important;
+  height: 14% !important;
+  left: auto !important;
+  right: 4.2% !important;
+}
+
+#gameScreen .delivery-car-sprite {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#gameScreen .delivery-car-1 { top: 10% !important; }
+#gameScreen .delivery-car-2 { top: 42% !important; }
+#gameScreen .delivery-car-3 { top: 74% !important; }
+
+#gameScreen .delivery-order-card {
+  left: auto !important;
+  right: 112% !important;
+}
+
+#gameScreen .environment-lake {
+  left: 1.6% !important;
+  top: 18% !important;
+  width: 13% !important;
+  height: 52% !important;
+}
+
+#gameScreen .tree-1 { left: 2.5% !important; top: 4% !important; }
+#gameScreen .tree-2 { left: 12% !important; top: 77% !important; }
+#gameScreen .tree-5 { left: 5% !important; top: 82% !important; }
+#gameScreen .tree-3 { left: 90% !important; top: 2% !important; }
+#gameScreen .tree-4 { left: 90% !important; top: 71% !important; }
+#gameScreen .tree-6 { left: 83% !important; top: 83% !important; }
+#gameScreen .rock-1 { left: 15% !important; top: 12% !important; }
+#gameScreen .rock-2 { left: 86% !important; top: 61% !important; }

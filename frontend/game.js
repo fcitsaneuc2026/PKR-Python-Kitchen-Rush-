@@ -5,7 +5,7 @@ const state = {
   timeLimit: 600, timeLeft: 600, startedAt: null, finishedAt: null,
   running: false, pyodide: null, scene: null, player: null,
   backpack: [null, null, null, null], currentOrder: null, orderNumber: 1,
-  items: {}, gameEnded: false, actionQueue: Promise.resolve()
+  items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false
 };
 
 // ============================================================
@@ -59,13 +59,58 @@ resetStationWork();
 // Every table/station coordinate is a blocked player tile.
 // The player must stand on an adjacent tile to use a station.
 const tableCoordinates = [
-  ...Array.from({ length: 10 }, (_, i) => ({ column: i + 1, row: 10 })),
+  { column: 5, row: 10 }, { column: 6, row: 10 }, { column: 7, row: 10 },
+  { column: 8, row: 10 }, { column: 9, row: 10 }, { column: 10, row: 10 },
   { column: 4, row: 4 }, { column: 4, row: 5 }, { column: 4, row: 6 },
-  { column: 7, row: 4 }, { column: 7, row: 5 }, { column: 7, row: 6 }
+  { column: 7, row: 4 }, { column: 7, row: 5 }, { column: 7, row: 6 },
+  { column: 4, row: 7 }, { column: 5, row: 7 }, { column: 6, row: 7 }, { column: 7, row: 7 }
 ];
 
 function isBlockedCoordinate(column, row) {
-  return tableCoordinates.some(cell => cell.column === Number(column) && cell.row === Number(row));
+  const c = Number(column), r = Number(row);
+  if (tableCoordinates.some(cell => cell.column === c && cell.row === r)) return true;
+  return Object.values(stations).some(station => station.column === c && station.row === r);
+}
+
+function isWalkable(column, row) {
+  const c = Number(column), r = Number(row);
+  if (!Number.isInteger(c) || !Number.isInteger(r) || c < 1 || c > 10 || r < 1 || r > 10) return false;
+  return !isBlockedCoordinate(c, r);
+}
+
+function shortestPath(from, to) {
+  if (from.column === to.column && from.row === to.row) return [{ column: from.column, row: from.row }];
+  if (!isWalkable(to.column, to.row)) return null;
+  const startKey = `${from.column},${from.row}`;
+  const goalKey = `${to.column},${to.row}`;
+  const parent = new Map([[startKey, null]]);
+  const queue = [{ column: from.column, row: from.row }];
+  for (let i = 0; i < queue.length; i++) {
+    const current = queue[i];
+    const neighbors = [
+      { column: current.column + 1, row: current.row },
+      { column: current.column - 1, row: current.row },
+      { column: current.column, row: current.row + 1 },
+      { column: current.column, row: current.row - 1 }
+    ];
+    for (const next of neighbors) {
+      const key = `${next.column},${next.row}`;
+      if (parent.has(key) || !isWalkable(next.column, next.row)) continue;
+      parent.set(key, current);
+      if (key === goalKey) {
+        const path = [next];
+        let step = current;
+        while (step) {
+          path.push(step);
+          step = parent.get(`${step.column},${step.row}`);
+        }
+        path.reverse();
+        return path;
+      }
+      queue.push(next);
+    }
+  }
+  return null;
 }
 
 function stationForRole(role) {
@@ -105,7 +150,14 @@ function playerFacingTexture(from, to) {
   return dr > 0 ? "playerUp" : "playerDown";
 }
 
-const recipes = { burger: { name: "Classic Burger", ingredients: ["bun", "patty", "lettuce"], emoji: "🍔" } };
+const SCORE_PER_ORDER = 20;
+const ORDER_MATERIALS = [
+  { type: "bun", status: "cooked" },
+  { type: "patty", status: "cooked" },
+  { type: "lettuce", status: "chopped" },
+  { type: "tomato", status: "sliced" }
+];
+const recipes = { burger: { name: "Classic Burger", ingredients: ["bun", "patty", "lettuce", "tomato"], emoji: "🍔" } };
 const itemInfo = {
   bun: { label: "Bun", emoji: "🍞", raw: "🍞", cooked: "🥯" },
   patty: { label: "Patty", emoji: "🥩", raw: "🥩", cooked: "🍖" },
@@ -120,10 +172,19 @@ function log(message) {
 }
 function clearLog() { $("consoleOutput").textContent = ""; }
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function playerGrid() {
+  return state.player ? pixelToGrid(state.player.x, state.player.y) : { column: 1, row: 1 };
+}
+function isAdjacentTo(station) {
+  const g = playerGrid();
+  const dc = Math.abs(g.column - Number(station.column));
+  const dr = Math.abs(g.row - Number(station.row));
+  return (dc === 1 && dr === 0) || (dc === 0 && dr === 1);
+}
 function nearStation(name) {
   if (!state.player) return false;
   const station = stations[name] || stationForRole(name);
-  return !!station && distance(state.player, station) <= 48;
+  return !!station && isAdjacentTo(station);
 }
 function updateHUD() {
   $("scoreValue").textContent = state.score;
@@ -161,34 +222,33 @@ function renderIngredientBackpack() {
 }
 function newOrder() {
   state.currentOrder = { ...recipes.burger, id: state.orderNumber++ };
-  $("orderCard").innerHTML = `<strong>Order #${state.currentOrder.id}: ${state.currentOrder.emoji} ${state.currentOrder.name}</strong><div>Prepare: bun + patty + lettuce + tomato</div><div>Plating and serving will be added in the next level.</div>`;
 }
 function setGuide(tab) {
   const guides = {
     movement: [
       "Walk on the 10 × 10 grid",
-      "Bottom-left is (1, 1). Top-right is (10, 10). You cannot stand on a table or station. Stand on a neighbour tile to use it.",
+      "Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.",
       "move_to(3, 9)"
     ],
     take: [
       "Take from a chest",
-      "Stand next to Lettuce (1, 10), Tomato (2, 10), Bun (3, 10), or Patty (4, 10). Needs a free backpack slot.",
+      "Stand on any empty tile next to Lettuce (1, 10), Tomato (2, 10), Bun (3, 10), or Patty (4, 10). For the bun chest, (3, 9) is the tile below it. Needs a free backpack slot.",
       'move_to(3, 9)\ntake("bun")'
     ],
     cook: [
       "Start cooking",
-      "Stand next to a free Cooking Pan at (4, 4), (4, 5), or (4, 6). The raw bun or patty leaves your backpack and stays on the pan. You can walk away while it cooks.",
-      'move_to(4, 3)\ncook("bun")'
+      "Stand on any empty tile next to a free Cooking Pan at (4, 4), (4, 5), or (4, 6): left, right, above, or below. Example for the pan at (4, 4): (5, 4), (3, 4), (4, 3), or (4, 5) if that tile is empty. You can walk away while it cooks.",
+      'move_to(5, 4)\ncook("bun")'
     ],
     cut: [
       "Start cutting",
-      "Stand next to a free Cutting Board at (7, 4), (7, 5), or (7, 6). Lettuce or tomato stays on the board. You can walk away while it finishes.",
-      'move_to(7, 3)\ncut("lettuce")'
+      "Stand on any empty tile next to a free Cutting Board at (7, 4), (7, 5), or (7, 6): left, right, above, or below. Example for the board at (7, 4): (8, 4), (6, 4), (7, 3), or (7, 5) if that tile is empty.",
+      'move_to(8, 4)\ncut("lettuce")'
     ],
     collect: [
       "Pick up finished food",
-      "After a pan or board is done, stand on a neighbour tile and collect(). The cooked or chopped item goes into your backpack. The station must be finished, and you need a free slot.",
-      "move_to(4, 3)\ncollect()"
+      "Stand on any empty neighbour tile of a finished pan or board, then collect(). You need a free backpack slot.",
+      "move_to(5, 4)\ncollect()"
     ],
     wait: [
       "Pause the script",
@@ -197,18 +257,35 @@ function setGuide(tab) {
     ],
     status: [
       "Check your state",
-      "Prints your grid position, backpack, and current order in Command output.",
+      "Shows your position, backpack contents, current order, and needed materials in plain text.",
       "status()"
     ]
   };
   const guide = guides[tab] || guides.movement;
   const [action, text, code] = guide;
-  $("guideAction").textContent = action;
-  $("guideText").textContent = text;
-  $("guideCode").textContent = code;
-  document.querySelectorAll(".guide-tabs .tab").forEach(button => {
-    button.classList.toggle("active", button.dataset.tab === (guides[tab] ? tab : "movement"));
-  });
+  const activeTab = guides[tab] ? tab : "movement";
+  const content = document.querySelector("#gameScreen .guidance-content");
+  const applyCopy = () => {
+    $("guideAction").textContent = action;
+    $("guideText").textContent = text;
+    $("guideCode").textContent = code;
+    document.querySelectorAll(".guide-tabs .tab").forEach(button => {
+      button.classList.toggle("active", button.dataset.tab === activeTab);
+    });
+  };
+  if (!content || content.dataset.guideTab === activeTab) {
+    applyCopy();
+    if (content) content.dataset.guideTab = activeTab;
+    return;
+  }
+  content.classList.add("guide-switching");
+  content.classList.remove("guide-in");
+  window.setTimeout(() => {
+    applyCopy();
+    content.dataset.guideTab = activeTab;
+    content.classList.remove("guide-switching");
+    content.classList.add("guide-in");
+  }, 180);
 }
 document.querySelectorAll(".guide-tabs .tab").forEach(button => {
   button.addEventListener("click", () => setGuide(button.dataset.tab));
@@ -245,10 +322,6 @@ function playTypingSound(){
 }
 $("codeEditor")?.addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const k=["Backspace","Delete","Enter","Tab","Space"];if(e.key.length===1||k.includes(e.key))playTypingSound();});
 
-function setOrderDrawer(open){$("orderDrawer").classList.toggle("hidden",!open);$("orderDrawer").setAttribute("aria-hidden",String(!open));$("orderToggle").setAttribute("aria-expanded",String(open));}
-$("orderToggle").addEventListener("click",()=>setOrderDrawer($("orderDrawer").classList.contains("hidden")));
-$("orderClose").addEventListener("click",()=>setOrderDrawer(false));
-
 class KitchenScene extends Phaser.Scene {
   constructor(){super("KitchenScene");}
   preload(){
@@ -257,13 +330,57 @@ class KitchenScene extends Phaser.Scene {
   create(){
     state.scene=this; this.cameras.main.setBackgroundColor("#F4D6A0"); this.drawKitchen();
     const start=gridToPixel(2,2); state.player={x:start.x,y:start.y};
-    this.playerSprite=this.add.image(start.x,start.y,"playerDown").setDepth(5);
+    this.playerSprite=this.add.image(start.x,start.y,"playerDown").setDepth(5).setInteractive({ useHandCursor:true });
+    this.playerSprite.setData("restSize", PLAYER_DISPLAY_SIZE);
+    this.playerSprite.setData("hoverSize", Math.round(PLAYER_DISPLAY_SIZE * 1.22));
     this.applyPlayerSize();
+    this.playerLabel=this.add.text(start.x,start.y-36,"Player",{
+      fontFamily:"Arial",
+      fontSize:"11px",
+      fontStyle:"bold",
+      color:"#3A2A2A",
+      backgroundColor:"#F9E6BD",
+      padding:{x:4,y:2}
+    }).setOrigin(.5).setDepth(6).setVisible(false);
+    this.playerSprite.on("pointerover",()=>{
+      this.playerLabel.setVisible(true).setAlpha(1);
+      this.playerSprite.setData("hovering", true);
+      this.tweens.killTweensOf(this.playerSprite, "displayWidth");
+      this.tweens.killTweensOf(this.playerSprite, "displayHeight");
+      this.tweens.add({
+        targets:this.playerSprite,
+        displayWidth:this.playerSprite.getData("hoverSize"),
+        displayHeight:this.playerSprite.getData("hoverSize"),
+        duration:140,
+        ease:"Back.Out"
+      });
+    });
+    this.playerSprite.on("pointerout",()=>{
+      this.playerSprite.setData("hovering", false);
+      this.tweens.killTweensOf(this.playerSprite, "displayWidth");
+      this.tweens.killTweensOf(this.playerSprite, "displayHeight");
+      this.tweens.add({
+        targets:this.playerSprite,
+        displayWidth:this.playerSprite.getData("restSize"),
+        displayHeight:this.playerSprite.getData("restSize"),
+        duration:140,
+        ease:"Sine.easeOut"
+      });
+      this.tweens.add({
+        targets:this.playerLabel,
+        alpha:0,
+        duration:100,
+        onComplete:()=>this.playerLabel.setVisible(false)
+      });
+    });
     updateHUD();
   }
   applyPlayerSize(){
     if(!this.playerSprite)return;
-    this.playerSprite.setOrigin(0.5,0.72).setDisplaySize(PLAYER_DISPLAY_SIZE,PLAYER_DISPLAY_SIZE);
+    const size=this.playerSprite.getData("hovering")
+      ? (this.playerSprite.getData("hoverSize")||PLAYER_DISPLAY_SIZE)
+      : (this.playerSprite.getData("restSize")||PLAYER_DISPLAY_SIZE);
+    this.playerSprite.setOrigin(0.5,0.72).setDisplaySize(size,size);
   }
   faceToward(target){
     if(!this.playerSprite||!target)return;
@@ -281,7 +398,7 @@ class KitchenScene extends Phaser.Scene {
     const g=this.add.graphics(); g.lineStyle(1,0xD7B77F,1);
     for(let i=0;i<=10;i++){const p=i*TILE_SIZE;g.lineBetween(p,0,p,480);g.lineBetween(0,p,480,p);}
 
-    // Tables: one continuous row across the top, plus a table under every tool.
+    // Standalone tables (no table tiles under the four chests).
     this.tableSprites=[];
     tableCoordinates.forEach(({column,row})=>{
       const p=gridToPixel(column,row);
@@ -350,17 +467,42 @@ class KitchenScene extends Phaser.Scene {
     });
   }
   movePlayerTo(x,y){
+    const from=pixelToGrid(this.playerSprite.x,this.playerSprite.y);
     const target=pixelToGrid(x,y);
-    if(isBlockedCoordinate(target.column,target.row)){
-      fail();
+    if(!isWalkable(target.column,target.row))fail();
+    const path=shortestPath(from,target);
+    if(!path)fail();
+    const steps=path.slice(1);
+    if(!steps.length){
+      state.player.x=this.playerSprite.x;
+      state.player.y=this.playerSprite.y;
+      updateHUD();
+      return Promise.resolve();
     }
+    return steps.reduce((chain,step)=>chain.then(()=>this.walkOneTile(step)),Promise.resolve());
+  }
+  walkOneTile(step){
+    const point=gridToPixel(step.column,step.row);
+    this.faceToward(point);
     return new Promise(resolve=>{
       const from={x:this.playerSprite.x,y:this.playerSprite.y};
-      this.faceToward({x,y});
-      const duration=Math.max(180,distance(from,{x,y})*4);
-      this.tweens.add({targets:this.playerSprite,x,y,duration,ease:"Sine.easeInOut",
-        onUpdate:()=>{state.player.x=this.playerSprite.x;state.player.y=this.playerSprite.y;updateHUD();},
-        onComplete:()=>{state.player.x=x;state.player.y=y;updateHUD();resolve();}});
+      const duration=Math.max(140,distance(from,point)*5);
+      this.tweens.add({
+        targets:this.playerSprite,x:point.x,y:point.y,duration,ease:"Sine.easeInOut",
+        onUpdate:()=>{
+          state.player.x=this.playerSprite.x;
+          state.player.y=this.playerSprite.y;
+          if(this.playerLabel)this.playerLabel.setPosition(this.playerSprite.x,this.playerSprite.y-36);
+          updateHUD();
+        },
+        onComplete:()=>{
+          state.player.x=point.x;
+          state.player.y=point.y;
+          if(this.playerLabel)this.playerLabel.setPosition(point.x,point.y-36);
+          updateHUD();
+          resolve();
+        }
+      });
     });
   }
   showItemEffect(text,emoji){const t=this.add.text(state.player.x,state.player.y-34,`${emoji} ${text}`,{fontFamily:"Arial",fontSize:"14px",color:"#3A2A2A",backgroundColor:"#fff"}).setOrigin(.5);this.tweens.add({targets:t,y:t.y-22,alpha:0,duration:700,onComplete:()=>t.destroy()});}
@@ -439,11 +581,21 @@ function elErrorFlashCleanup() {
 function backpackHasSpace() {
   return state.backpack.some(item => !item);
 }
+function hasPreparedMaterial(type, status) {
+  return state.backpack.some(item => item && item.type === type && item.status === status);
+}
+function completeOrder() {
+  state.ordersCompleted += 1;
+  state.score += SCORE_PER_ORDER;
+  updateHUD();
+  window.dispatchEvent(new CustomEvent("pkr:order-complete"));
+  newOrder();
+}
 function nearbyStations(role) {
   if (!state.player) return [];
   return Object.values(stations).filter(station => {
     if (role && station.role !== role) return false;
-    return distance(state.player, station) <= 48;
+    return isAdjacentTo(station);
   });
 }
 function nearestStation(list) {
@@ -520,7 +672,6 @@ function action(fn){
 
 function executeGameCommand(name,args){
   if(state.gameEnded)fail();
-  if(name==="fry")name="cook";
   if(name==="take"){
     const type=String(args[0]);
     return action(async()=>{
@@ -563,9 +714,35 @@ function executeGameCommand(name,args){
       log(`Moved to (${c}, ${r}).`);
     });
   }
-  if(name==="plate"||name==="wash_plate"||name==="serve")return action(async()=>fail());
+  if(name==="plate"||name==="wash_plate")return action(async()=>fail());
+  if(name==="serve")return action(async()=>{
+    for(const need of ORDER_MATERIALS){
+      if(!hasPreparedMaterial(need.type,need.status))fail();
+    }
+    ORDER_MATERIALS.forEach(need=>removeIngredient(need.type,need.status));
+    completeOrder();
+    log(`Order complete! +${SCORE_PER_ORDER} score.`);
+    log(`Orders done: ${state.ordersCompleted}. Score: ${state.score}.`);
+  });
   if(name==="wait")return action(async()=>{const seconds=Math.max(0,Math.min(10,Number(args[0]||1)));await new Promise(r=>setTimeout(r,seconds*1000));log(`Waited ${seconds} second(s).`);});
-  if(name==="status")return action(async()=>{const g=pixelToGrid(state.player.x,state.player.y);log(JSON.stringify({position:[g.column,g.row],backpack:state.backpack,order:state.currentOrder},null,2));});
+  if(name==="status")return action(async()=>{
+    const g=playerGrid();
+    const backpack={};
+    state.backpack.forEach((item,index)=>{
+      if(!item){backpack[index+1]="empty";return;}
+      const info=ingredientInfo[item.type];
+      backpack[index+1]=`${info.states[item.status].label} ${info.label}`;
+    });
+    const backpackText=Object.entries(backpack).map(([slot,value])=>`${slot}: ${value}`).join(", ");
+    const order=state.currentOrder;
+    const needed=order?.ingredients?.length
+      ? order.ingredients.join(", ")
+      : "bun, patty, lettuce, tomato";
+    log(`Player position: (${g.column}, ${g.row})`);
+    log(`Backpack: {${backpackText}}`);
+    log(`Current order: ${order?`${order.name} (Order #${order.id})`:"none"}`);
+    log(`Needed: ${needed}`);
+  });
   fail();
 }
 
@@ -581,37 +758,85 @@ async function loadPython(){
   try{
     state.pyodide=await loadPyodide();
     await state.pyodide.runPythonAsync(`
-import js
-def move_to(column, row):
-    return js.execute_game_command("move_to", [column, row])
-def take(item):
-    return js.execute_game_command("take", [item])
-def cook(item):
-    return js.execute_game_command("cook", [item])
-def cut(item):
-    return js.execute_game_command("cut", [item])
-def collect():
-    return js.execute_game_command("collect", [])
-def fry(item):
-    return js.execute_game_command("fry", [item])
-def plate(item):
-    return js.execute_game_command("plate", [item])
-def wash_plate():
-    return js.execute_game_command("wash_plate", [])
-def serve():
-    return js.execute_game_command("serve", [])
-def wait(seconds=1):
-    return js.execute_game_command("wait", [seconds])
-def status():
-    return js.execute_game_command("status", [])
+import ast, js
+
+_PKR_COMMANDS = {"move_to", "take", "cook", "cut", "collect", "plate", "wash_plate", "serve", "wait", "status"}
+
+class _PkrAwaitCommands(ast.NodeTransformer):
+    def visit_Call(self, node):
+        node = self.generic_visit(node)
+        if isinstance(node.func, ast.Name) and node.func.id in _PKR_COMMANDS:
+            return ast.Await(value=node)
+        return node
+    def visit_Await(self, node):
+        node.value = self.generic_visit(node.value)
+        if isinstance(node.value, ast.Await):
+            return node.value
+        return node
+
+def __pkr_prepare(source):
+    tree = ast.parse(source)
+    tree = _PkrAwaitCommands().visit(tree)
+    ast.fix_missing_locations(tree)
+    body = tree.body if tree.body else [ast.Pass()]
+    fn = ast.AsyncFunctionDef(
+        name="__pkr_main",
+        args=ast.arguments(posonlyargs=[], args=[], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]),
+        body=body,
+        decorator_list=[],
+        returns=None,
+        type_comment=None,
+        type_params=[],
+    )
+    module = ast.Module(body=[fn], type_ignores=[])
+    ast.fix_missing_locations(module)
+    return ast.unparse(module)
+
+async def move_to(column, row):
+    return await js.execute_game_command("move_to", [column, row])
+async def take(item):
+    return await js.execute_game_command("take", [item])
+async def cook(item):
+    return await js.execute_game_command("cook", [item])
+async def cut(item):
+    return await js.execute_game_command("cut", [item])
+async def collect():
+    return await js.execute_game_command("collect", [])
+async def plate(item):
+    return await js.execute_game_command("plate", [item])
+async def wash_plate():
+    return await js.execute_game_command("wash_plate", [])
+async def serve():
+    return await js.execute_game_command("serve", [])
+async def wait(seconds=1):
+    return await js.execute_game_command("wait", [seconds])
+async def status():
+    return await js.execute_game_command("status", [])
 `);
     $("runBtn").disabled=false;$("consoleOutput").textContent="Python loaded. Write commands and click Run Python.";
   }catch(e){log("Could not load Pyodide: "+e);}
 }
 async function runPython(){
-  if(!state.pyodide||state.gameEnded)return;clearLog();
-  try{await state.pyodide.runPythonAsync($("codeEditor").value);log("Python execution finished.");}
-  catch(e){log("Python error: "+e.message);}
+  if(!state.pyodide||state.gameEnded||state.pythonRunning)return;
+  state.pythonRunning=true;
+  if($("runBtn"))$("runBtn").disabled=true;
+  clearLog();
+  try{
+    const source=$("codeEditor").value;
+    state.pyodide.globals.set("__pkr_user_source", source);
+    await state.pyodide.runPythonAsync(`
+__pkr_prepared = __pkr_prepare(__pkr_user_source)
+exec(__pkr_prepared, globals())
+await __pkr_main()
+`);
+    await state.actionQueue;
+    log("Python execution finished.");
+  }catch(e){
+    log("Python error: "+(e.message||e));
+  }finally{
+    state.pythonRunning=false;
+    if($("runBtn"))$("runBtn").disabled=false;
+  }
 }
 function startTimer(){const timer=setInterval(()=>{if(!state.running||state.gameEnded){clearInterval(timer);return;}state.timeLeft--;updateHUD();if(state.timeLeft<=0)finishGame();},1000);}
 async function finishGame(){if(state.gameEnded)return;state.gameEnded=true;state.running=false;state.finishedAt=new Date();showScreen("resultScreen");$("resultSummary").innerHTML=`<p><b>${escapeHtml(state.playerName)}</b>, your time is up.</p><p>Score: <b>${state.score}</b></p><p>Orders completed: <b>${state.ordersCompleted}</b></p>`;try{const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:state.playerName,score:state.score,game_mode:"Solo Burger Rush",time_completed:new Date().toISOString(),orders_completed:state.ordersCompleted})});if(!r.ok)throw new Error();$("resultSummary").innerHTML+=`<p class="small-note">Score saved to the shared leaderboard.</p>`;}catch(_){$("resultSummary").innerHTML+=`<p class="small-note">Could not save score. Check the server connection.</p>`;}}
@@ -620,19 +845,92 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 
 $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
-  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.actionQueue=Promise.resolve();resetStationWork();showScreen("gameScreen");
+  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.actionQueue=Promise.resolve();resetStationWork();showScreen("gameScreen");
   if(!state.scene){new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
 });
 $("runBtn").addEventListener("click",runPython);
 $("clearBtn").addEventListener("click",()=>{$("codeEditor").value="";clearLog();});
-$("hintBtn").addEventListener("click",()=>log('Hint: move_to(3, 9), take("bun"), move_to(4, 3), cook("bun"), wait(1), collect()'));
+$("hintBtn").addEventListener("click",()=>log('Hint: move_to(3, 9), take("bun"), move_to(5, 4), cook("bun"), wait(1), collect()'));
 $("leaderboardBtn").addEventListener("click",showLeaderboard);
 $("backBtn").addEventListener("click",()=>showScreen("resultScreen"));
 $("restartBtn").addEventListener("click",()=>location.reload());
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});
 fetch("/api/health").catch(()=>null);loadPython();
+
+(() => {
+  const bar = $("commandCurtainBar");
+  const body = $("commandCurtainBody");
+  const matrix = $("commandMatrix");
+  const panel = document.querySelector("#gameScreen .command-panel");
+  if (!bar || !body || !matrix || !panel) return;
+
+  const cols = 14;
+  const rows = 9;
+  const glyphs = "01#*+ｱﾊﾐﾘ01";
+  matrix.innerHTML = "";
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cell = document.createElement("span");
+      cell.textContent = glyphs[(row * cols + col * 3) % glyphs.length];
+      cell.dataset.row = String(row);
+      cell.dataset.col = String(col);
+      matrix.appendChild(cell);
+    }
+  }
+
+  const cells = [...matrix.children];
+  let open = true;
+  let timer = 0;
+
+  function setDelays(closing) {
+    cells.forEach(cell => {
+      const row = Number(cell.dataset.row);
+      const col = Number(cell.dataset.col);
+      const delay = closing
+        ? row * 48 + col * 16
+        : (rows - 1 - row) * 48 + col * 16;
+      cell.style.animationDelay = `${delay}ms`;
+    });
+  }
+
+  let busy = false;
+  function toggleCurtain() {
+    if (busy) return;
+    busy = true;
+    open = !open;
+    bar.setAttribute("aria-expanded", String(open));
+    bar.classList.toggle("is-collapsed", !open);
+    clearTimeout(timer);
+    if (!open) {
+      setDelays(true);
+      matrix.classList.add("is-on", "is-closing");
+      matrix.classList.remove("is-opening");
+      timer = window.setTimeout(() => {
+        body.classList.add("curtain-closed");
+        busy = false;
+      }, 620);
+    } else {
+      body.classList.remove("curtain-closed");
+      setDelays(false);
+      matrix.classList.add("is-on", "is-opening");
+      matrix.classList.remove("is-closing");
+      timer = window.setTimeout(() => {
+        matrix.classList.remove("is-on", "is-opening");
+        busy = false;
+      }, 680);
+    }
+  }
+
+  bar.addEventListener("click", toggleCurtain);
+  bar.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleCurtain();
+    }
+  });
+})();
 
 /* =========================================================
    PKR DELIVERY EVENT BRIDGE

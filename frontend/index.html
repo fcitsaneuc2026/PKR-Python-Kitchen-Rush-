@@ -36,7 +36,6 @@
               <span>Time: <b id="timeValue">10:00</b></span>
               <span>Score: <b id="scoreValue">0</b></span>
               <span>Orders: <b id="ordersValue">0</b></span>
-              <button id="orderToggle" class="order-toggle" aria-expanded="false">🍔 Current Order</button>
             </div>
           </div>
 
@@ -83,10 +82,12 @@
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
         <strong>Burger</strong>
+        <div class="completed-burger-slot" aria-hidden="true"></div>
         <div class="order-materials">
           <img src="/static/assets/bun/bun_cooked.png" alt="Cooked bun">
           <img src="/static/assets/patty/patty_cooked.png" alt="Cooked patty">
           <img src="/static/assets/lettuce/lettuce_chopped.png" alt="Chopped lettuce">
+          <img src="/static/assets/tomato/tomato_sliced.png" alt="Sliced tomato">
         </div>
       </div>
     </div>
@@ -94,10 +95,12 @@
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
         <strong>Burger</strong>
+        <div class="completed-burger-slot" aria-hidden="true"></div>
         <div class="order-materials">
           <img src="/static/assets/bun/bun_cooked.png" alt="Cooked bun">
           <img src="/static/assets/patty/patty_cooked.png" alt="Cooked patty">
           <img src="/static/assets/lettuce/lettuce_chopped.png" alt="Chopped lettuce">
+          <img src="/static/assets/tomato/tomato_sliced.png" alt="Sliced tomato">
         </div>
       </div>
     </div>
@@ -105,10 +108,12 @@
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
         <strong>Burger</strong>
+        <div class="completed-burger-slot" aria-hidden="true"></div>
         <div class="order-materials">
           <img src="/static/assets/bun/bun_cooked.png" alt="Cooked bun">
           <img src="/static/assets/patty/patty_cooked.png" alt="Cooked patty">
           <img src="/static/assets/lettuce/lettuce_chopped.png" alt="Chopped lettuce">
+          <img src="/static/assets/tomato/tomato_sliced.png" alt="Sliced tomato">
         </div>
       </div>
     </div>
@@ -123,16 +128,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Temporary legacy order drawer: kept so existing JS remains safe.
-               It will be replaced by the car-hover order system in a later step. -->
-          <div id="orderDrawer" class="order-drawer hidden" aria-hidden="true">
-            <div class="drawer-heading">
-              <h3>Current Order</h3>
-              <button id="orderClose" class="icon-btn" aria-label="Close current order">✕</button>
-            </div>
-            <div id="orderCard" class="order-card"></div>
           </div>
         </section>
 
@@ -156,7 +151,7 @@
             </div>
             <div class="command-guide">
               <h3>Command Guidance</h3>
-              <p id="guideText">Bottom-left is (1, 1). Top-right is (10, 10). You cannot stand on a table or station. Stand on a neighbour tile to use it.</p>
+              <p id="guideText">Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.</p>
               <pre id="guideCode">move_to(3, 9)</pre>
             </div>
           </div>
@@ -172,7 +167,7 @@
             <textarea id="codeEditor" spellcheck="false"># Take a bun, start cooking, then come back to collect it
 move_to(3, 9)
 take("bun")
-move_to(4, 3)
+move_to(5, 4)
 cook("bun")
 wait(1)
 collect()</textarea>
@@ -184,6 +179,7 @@ collect()</textarea>
             <div class="console-title">Command output</div>
             <pre id="consoleOutput" class="console">Python is loading…</pre>
           </div>
+          <div id="commandMatrix" class="command-matrix" aria-hidden="true"></div>
         </section>
 
       </div>

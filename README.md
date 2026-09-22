@@ -9,8 +9,8 @@
 - Actual Python execution through Pyodide
 - Safe, limited game command API
 - Backpack with 3 item slots
-- Fridge, cutting station, fry station, plate counter, wash sink, serve counter
-- Visual state changes for lettuce, bread, and patty
+- Chests, cutting boards, cooking pans; plate counter, wash sink, and serve counter are kept for later
+- Visual state changes for lettuce, bread, tomato, and patty
 - Score calculated after orders are served
 - Central SQLite leaderboard
 - LAN-ready FastAPI server
