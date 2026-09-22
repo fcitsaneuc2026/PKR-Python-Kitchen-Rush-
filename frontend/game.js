@@ -293,38 +293,53 @@ document.querySelectorAll(".guide-tabs .tab").forEach(button => {
   button.addEventListener("click", () => setGuide(button.dataset.tab));
 });
 
-const moveGuideDemo = { timer: null, running: false, player: null };
-
 function syncGuideDemo(tab) {
   const demo = $("guideDemo");
   const character = $("guideCharacter");
-  if (tab === "movement") {
+  const playable = ["movement", "take", "cook", "cut", "collect"];
+  if (playable.includes(tab)) {
     if (demo) demo.hidden = false;
     if (character) character.hidden = true;
-    startMoveGuideDemo();
+    startGuideDemo(tab);
   } else {
-    stopMoveGuideDemo();
+    stopGuideDemo();
     if (demo) demo.hidden = true;
     if (character) character.hidden = false;
   }
 }
 
-function buildMoveGuideDemo() {
+const guideDemo = { timers: [], generation: 0, player: null, item: null, cells: {}, stationImgs: {} };
+
+const GUIDE_HIGHLIGHTS = {
+  movement: [{ column: 3, row: 9 }],
+  take: [{ column: 3, row: 10 }, { column: 3, row: 9 }],
+  cook: [{ column: 4, row: 4 }, { column: 5, row: 4 }],
+  cut: [{ column: 7, row: 4 }, { column: 8, row: 4 }],
+  collect: [{ column: 4, row: 4 }, { column: 5, row: 4 }]
+};
+
+function buildGuideDemo() {
   const board = $("guideMiniBoard");
   if (!board || board.dataset.ready) return;
   board.dataset.ready = "1";
+  guideDemo.cells = {};
+  guideDemo.stationImgs = {};
   for (let row = 10; row >= 1; row--) {
     for (let col = 1; col <= 10; col++) {
       const cell = document.createElement("div");
       cell.className = "guide-mini-cell";
-      if (col === 3 && row === 9) cell.classList.add("is-goal");
+      const key = `${col},${row}`;
+      cell.dataset.key = key;
+      const stationEntry = Object.entries(stations).find(([, station]) => station.column === col && station.row === row);
       if (isBlockedCoordinate(col, row)) {
         cell.classList.add("is-blocked");
-        const station = Object.values(stations).find(item => item.column === col && item.row === row);
         const img = document.createElement("img");
-        if (station) {
+        if (stationEntry) {
+          const [id, station] = stationEntry;
           img.src = station.kind === "chest" ? assetPaths[station.closedTexture] : assetPaths[station.frameTextures[0]];
           img.alt = station.label;
+          img.dataset.stationId = id;
+          guideDemo.stationImgs[id] = img;
         } else {
           img.src = assetPaths.table;
           img.alt = "Table";
@@ -332,6 +347,7 @@ function buildMoveGuideDemo() {
         cell.appendChild(img);
       }
       board.appendChild(cell);
+      guideDemo.cells[key] = cell;
     }
   }
   const player = document.createElement("img");
@@ -339,53 +355,168 @@ function buildMoveGuideDemo() {
   player.alt = "Player";
   player.src = assetPaths.playerDown;
   board.appendChild(player);
-  moveGuideDemo.player = player;
+  const item = document.createElement("img");
+  item.className = "guide-mini-item is-hidden";
+  item.alt = "";
+  board.appendChild(item);
+  guideDemo.player = player;
+  guideDemo.item = item;
 }
 
-function setMoveGuidePlayer(column, row, texture) {
-  const player = moveGuideDemo.player;
-  if (!player) return;
-  player.style.left = `${(column - 0.5) * 10}%`;
-  player.style.top = `${(10.5 - row) * 10}%`;
-  if (texture && assetPaths[texture]) player.src = assetPaths[texture];
+function placeGuideOverlay(el, column, row) {
+  if (!el) return;
+  el.style.left = `${(column - 0.5) * 10}%`;
+  el.style.top = `${(10.5 - row) * 10}%`;
 }
 
-function stopMoveGuideDemo() {
-  moveGuideDemo.running = false;
-  if (moveGuideDemo.timer) {
-    clearTimeout(moveGuideDemo.timer);
-    moveGuideDemo.timer = null;
+function setGuidePlayer(column, row, texture) {
+  placeGuideOverlay(guideDemo.player, column, row);
+  if (texture && assetPaths[texture]) guideDemo.player.src = assetPaths[texture];
+}
+
+function setGuideItem(column, row, src, visible) {
+  const item = guideDemo.item;
+  if (!item) return;
+  if (src) item.src = src;
+  placeGuideOverlay(item, column, row);
+  item.classList.toggle("is-hidden", !visible);
+}
+
+function setGuideStation(id, textureKey) {
+  const img = guideDemo.stationImgs[id];
+  if (img && assetPaths[textureKey]) img.src = assetPaths[textureKey];
+}
+
+function resetGuideStations() {
+  Object.entries(stations).forEach(([id, station]) => {
+    if (station.kind === "chest") setGuideStation(id, station.closedTexture);
+    else if (station.frameTextures) setGuideStation(id, station.frameTextures[0]);
+  });
+}
+
+function setGuideHighlights(tab) {
+  Object.values(guideDemo.cells).forEach(cell => cell.classList.remove("is-goal"));
+  (GUIDE_HIGHLIGHTS[tab] || []).forEach(({ column, row }) => {
+    const cell = guideDemo.cells[`${column},${row}`];
+    if (cell) cell.classList.add("is-goal");
+  });
+}
+
+function stopGuideDemo() {
+  guideDemo.generation += 1;
+  (guideDemo.timers || []).forEach(id => clearTimeout(id));
+  guideDemo.timers = [];
+}
+
+function waitGuide(ms) {
+  return new Promise(resolve => {
+    const id = setTimeout(resolve, ms);
+    guideDemo.timers.push(id);
+  });
+}
+
+async function walkGuidePath(from, to, alive) {
+  const path = shortestPath(from, to);
+  if (!path) return from;
+  setGuidePlayer(from.column, from.row, "playerDown");
+  for (let i = 0; i < path.length - 1; i++) {
+    if (!alive()) return path[i];
+    const next = path[i + 1];
+    setGuidePlayer(next.column, next.row, playerFacingTexture(path[i], next) || "playerUp");
+    await waitGuide(240);
+  }
+  return path[path.length - 1];
+}
+
+async function playToolFrames(id, frames, alive, stepMs) {
+  for (const frame of frames) {
+    if (!alive()) return;
+    setGuideStation(id, frame);
+    await waitGuide(stepMs);
   }
 }
 
-function startMoveGuideDemo() {
-  buildMoveGuideDemo();
-  stopMoveGuideDemo();
+async function playGuideScene(tab, alive) {
   const start = { column: 2, row: 2 };
-  const goal = { column: 3, row: 9 };
-  const path = shortestPath(start, goal);
-  if (!path || !moveGuideDemo.player) return;
-  moveGuideDemo.running = true;
-  setMoveGuidePlayer(start.column, start.row, "playerDown");
-  let i = 0;
-  const tick = () => {
-    if (!moveGuideDemo.running) return;
-    if (i >= path.length - 1) {
-      moveGuideDemo.timer = setTimeout(() => {
-        if (!moveGuideDemo.running) return;
-        i = 0;
-        setMoveGuidePlayer(start.column, start.row, "playerDown");
-        moveGuideDemo.timer = setTimeout(tick, 280);
-      }, 900);
-      return;
+  resetGuideStations();
+  setGuideHighlights(tab);
+  setGuideItem(2, 2, assetPaths.bunUncooked, false);
+
+  if (tab === "movement") {
+    await walkGuidePath(start, { column: 3, row: 9 }, alive);
+    return;
+  }
+
+  if (tab === "take") {
+    const stand = await walkGuidePath(start, { column: 3, row: 9 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerUp");
+    await waitGuide(220);
+    setGuideStation("bun", "bunChestOpened");
+    setGuideItem(3, 10, assetPaths.bunUncooked, true);
+    await waitGuide(280);
+    if (!alive()) return;
+    setGuideItem(3, 9, assetPaths.bunUncooked, true);
+    await waitGuide(380);
+    setGuideStation("bun", "bunChestClosed");
+    await waitGuide(500);
+    return;
+  }
+
+  if (tab === "cook") {
+    const stand = await walkGuidePath(start, { column: 5, row: 4 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerLeft");
+    setGuideItem(5, 4, assetPaths.bunUncooked, true);
+    await waitGuide(280);
+    setGuideItem(5, 4, assetPaths.bunUncooked, false);
+    const cookPromise = playToolFrames("pan1", ["panEmpty", "pan25", "pan50", "pan75", "panComplete"], alive, 320);
+    await waitGuide(280);
+    if (!alive()) return;
+    await walkGuidePath({ column: 5, row: 4 }, { column: 6, row: 3 }, alive);
+    await cookPromise;
+    return;
+  }
+
+  if (tab === "cut") {
+    const stand = await walkGuidePath(start, { column: 8, row: 4 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerLeft");
+    setGuideItem(8, 4, assetPaths.lettuceUncut, true);
+    await waitGuide(280);
+    setGuideItem(8, 4, assetPaths.lettuceUncut, false);
+    await playToolFrames("cuttingBoard1", ["boardEmpty", "board25", "board50", "board75", "boardComplete"], alive, 320);
+    return;
+  }
+
+  if (tab === "collect") {
+    setGuideStation("pan1", "panComplete");
+    const stand = await walkGuidePath(start, { column: 5, row: 4 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerLeft");
+    await waitGuide(250);
+    setGuideItem(4, 4, assetPaths.bunCooked, true);
+    await waitGuide(280);
+    if (!alive()) return;
+    setGuideItem(5, 4, assetPaths.bunCooked, true);
+    setGuideStation("pan1", "panEmpty");
+    await waitGuide(550);
+  }
+}
+
+function startGuideDemo(tab) {
+  buildGuideDemo();
+  stopGuideDemo();
+  const gen = ++guideDemo.generation;
+  if (!guideDemo.player) return;
+  (async () => {
+    const alive = () => guideDemo.generation === gen;
+    while (alive()) {
+      await playGuideScene(tab, alive);
+      if (!alive()) return;
+      await waitGuide(750);
     }
-    const from = path[i];
-    const to = path[i + 1];
-    setMoveGuidePlayer(to.column, to.row, playerFacingTexture(from, to) || "playerUp");
-    i += 1;
-    moveGuideDemo.timer = setTimeout(tick, 260);
-  };
-  moveGuideDemo.timer = setTimeout(tick, 400);
+  })();
 }
 
 function showScreen(id) {
@@ -982,7 +1113,7 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
   playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.actionQueue=Promise.resolve();resetStationWork();showScreen("gameScreen");
-  startMoveGuideDemo();
+  startGuideDemo("movement");
   if(!state.scene){new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
 });
@@ -995,7 +1126,7 @@ $("restartBtn").addEventListener("click",()=>location.reload());
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});
 fetch("/api/health").catch(()=>null);loadPython();
-startMoveGuideDemo();
+startGuideDemo("movement");
 
 (() => {
   const bar = $("commandCurtainBar");

@@ -1755,3 +1755,20 @@ html, body {
   image-rendering: pixelated;
   transition: left 0.22s linear, top 0.22s linear;
 }
+
+#gameScreen .guide-mini-item {
+  position: absolute;
+  width: 9%;
+  height: 9%;
+  object-fit: contain;
+  transform: translate(-50%, -60%);
+  z-index: 4;
+  pointer-events: none;
+  image-rendering: pixelated;
+  transition: left 0.32s ease, top 0.32s ease, opacity 0.18s ease;
+}
+
+#gameScreen .guide-mini-item.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
