@@ -80,6 +80,7 @@ const assetPaths = {
   lettuceUncut: "/static/assets/lettuce/lettuce_uncut.png", lettuceChopped: "/static/assets/lettuce/lettuce_chopped.png",
   tomatoUncut: "/static/assets/tomato/tomato_uncut.png", tomatoSliced: "/static/assets/tomato/tomato_sliced.png",
   panEmpty: "/static/assets/cooking_pan/pan_empty.png", pan25: "/static/assets/cooking_pan/pan_25%25.png", pan50: "/static/assets/cooking_pan/pan_50%25.png", pan75: "/static/assets/cooking_pan/pan_75%25.png", panComplete: "/static/assets/cooking_pan/pan_complete.png",
+  table: "/static/assets/table/table.png",
   boardEmpty: "/static/assets/cutting_board/cutting_board_empty.png", board25: "/static/assets/cutting_board/cutting_board_25%25.png", board50: "/static/assets/cutting_board/cutting_board_50%25.png", board75: "/static/assets/cutting_board/cutting_board_75%25.png", boardComplete: "/static/assets/cutting_board/cutting_board_complete.png"
 };
 
@@ -232,12 +233,60 @@ class KitchenScene extends Phaser.Scene {
     });
 
     this.stationSprites={};
+    this.stationLabels={};
     Object.entries(stations).forEach(([id,station])=>{
       const texture=station.kind==="chest"?station.closedTexture:station.frameTextures[0];
-      const size=station.kind==="chest"?44:44;
-      this.stationSprites[id]=this.add.image(station.x,station.y,texture).setDisplaySize(size,size).setDepth(2);
-      const labelY=station.row<=5?station.y-31:station.y+31;
-      this.add.text(station.x,labelY,station.label,{fontFamily:"Arial",fontSize:"10px",fontStyle:"bold",color:"#3A2A2A",backgroundColor:"#F9E6BD",padding:{x:2,y:1}}).setOrigin(.5).setDepth(3);
+      const size=44;
+
+      const sprite=this.add.image(station.x,station.y,texture)
+        .setDisplaySize(size,size)
+        .setDepth(2)
+        .setInteractive({ useHandCursor:true });
+
+      // Labels are hidden until the player hovers the station.
+      const label=this.add.text(station.x,station.y,station.label,{
+        fontFamily:"Arial",
+        fontSize:"11px",
+        fontStyle:"bold",
+        color:"#3A2A2A",
+        backgroundColor:"#F9E6BD",
+        padding:{x:4,y:2}
+      }).setOrigin(.5).setDepth(4).setVisible(false);
+
+      sprite.on("pointerover",()=>{
+        label.setVisible(true);
+        this.tweens.add({
+          targets:sprite,
+          scaleX:1.15,
+          scaleY:1.15,
+          duration:140,
+          ease:"Back.Out"
+        });
+        this.tweens.add({
+          targets:label,
+          alpha:1,
+          duration:120
+        });
+      });
+
+      sprite.on("pointerout",()=>{
+        this.tweens.add({
+          targets:sprite,
+          scaleX:1,
+          scaleY:1,
+          duration:140,
+          ease:"Back.Out"
+        });
+        this.tweens.add({
+          targets:label,
+          alpha:0,
+          duration:100,
+          onComplete:()=>label.setVisible(false)
+        });
+      });
+
+      this.stationSprites[id]=sprite;
+      this.stationLabels[id]=label;
     });
   }
   movePlayerTo(x,y){
