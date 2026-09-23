@@ -5,7 +5,8 @@ const state = {
   timeLimit: 600, timeLeft: 600, startedAt: null, finishedAt: null,
   running: false, pyodide: null, scene: null, player: null,
   backpack: [null, null, null, null], currentOrder: null, orderNumber: 1,
-  items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false
+  items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false,
+  dirtyPlates: 0
 };
 
 // ============================================================
@@ -46,12 +47,69 @@ const stations = {
   // Three cutting boards.
   cuttingBoard1: { column: 7, row: 4, ...gridToPixel(7, 4), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] },
   cuttingBoard2: { column: 7, row: 5, ...gridToPixel(7, 5), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] },
-  cuttingBoard3: { column: 7, row: 6, ...gridToPixel(7, 6), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] }
+  cuttingBoard3: { column: 7, row: 6, ...gridToPixel(7, 6), label: "Cutting Board", kind: "tool", role: "cuttingBoard", frameTextures: ["boardEmpty", "board25", "board50", "board75", "boardComplete"] },
+
+  wash: { column: 6, row: 10, ...gridToPixel(6, 10), label: "Washing Station", kind: "wash", role: "wash" },
+  plate1: { column: 7, row: 10, ...gridToPixel(7, 10), label: "Plate", kind: "plate", role: "plate" },
+  plate2: { column: 8, row: 10, ...gridToPixel(8, 10), label: "Plate", kind: "plate", role: "plate" },
+  plate3: { column: 9, row: 10, ...gridToPixel(9, 10), label: "Plate", kind: "plate", role: "plate" },
+  plate4: { column: 10, row: 10, ...gridToPixel(10, 10), label: "Plate", kind: "plate", role: "plate" },
+  serve1: { column: 10, row: 1, ...gridToPixel(10, 1), label: "Serve Counter", kind: "serve", role: "serve" },
+  serve2: { column: 10, row: 2, ...gridToPixel(10, 2), label: "Serve Counter", kind: "serve", role: "serve" }
 };
 
+const PLATE_FRAMES = ["burgerEmpty", "burger25", "burger50", "burger75", "burgerComplete"];
+const WASH_USED_FRAMES = [null, "washUsedOne", "washUsedTwo", "washUsedThree", "washUsedFour"];
+const WASH_COUNTDOWN_FRAMES = ["washCountdown3", "washCountdown2", "washCountdown1"];
+
+function stationIdleTexture(station) {
+  if (station.kind === "chest") return station.closedTexture;
+  if (station.kind === "plate") {
+    if (station.work?.phase === "vacant") return "burgerEmpty";
+    return PLATE_FRAMES[Math.min(4, station.work?.items?.length || 0)];
+  }
+  if (station.kind === "wash") return washIdleTexture();
+  if (station.kind === "serve") return "serveCounterSmall";
+  return station.frameTextures[0];
+}
+
+function washIdleTexture() {
+  const count = Math.max(0, Math.min(4, state.dirtyPlates || 0));
+  return count ? WASH_USED_FRAMES[count] : "washEmpty";
+}
+
+function setStationSpriteTexture(id, textureKey, visible = true) {
+  const sprite = state.scene?.stationSprites?.[id];
+  if (!sprite || !textureKey) return;
+  sprite.setVisible(visible);
+  if (visible) {
+    sprite.setTexture(textureKey);
+    const rest = sprite.getData("restSize") || 44;
+    sprite.setDisplaySize(rest, rest);
+  }
+}
+
+function updatePlateVisual(id) {
+  const station = stations[id];
+  if (!station || station.kind !== "plate") return;
+  if (station.work?.phase === "vacant") {
+    setStationSpriteTexture(id, "burgerEmpty", false);
+    return;
+  }
+  setStationSpriteTexture(id, stationIdleTexture(station), true);
+}
+
+function updateWashVisual() {
+  if (stations.wash?.work?.phase === "busy") return;
+  setStationSpriteTexture("wash", washIdleTexture(), true);
+}
+
 function resetStationWork() {
+  state.dirtyPlates = 0;
   Object.values(stations).forEach(station => {
     if (station.kind === "tool") station.work = { phase: "empty", item: null };
+    if (station.kind === "plate") station.work = { phase: "empty", items: [] };
+    if (station.kind === "wash") station.work = { phase: "empty" };
   });
 }
 resetStationWork();
@@ -59,8 +117,8 @@ resetStationWork();
 // Every table/station coordinate is a blocked player tile.
 // The player must stand on an adjacent tile to use a station.
 const tableCoordinates = [
-  { column: 5, row: 10 }, { column: 6, row: 10 }, { column: 7, row: 10 },
-  { column: 8, row: 10 }, { column: 9, row: 10 }, { column: 10, row: 10 },
+  { column: 5, row: 10 },
+  { column: 7, row: 10 }, { column: 8, row: 10 }, { column: 9, row: 10 }, { column: 10, row: 10 },
   { column: 4, row: 4 }, { column: 4, row: 5 }, { column: 4, row: 6 },
   { column: 7, row: 4 }, { column: 7, row: 5 }, { column: 7, row: 6 },
   { column: 4, row: 7 }, { column: 5, row: 7 }, { column: 6, row: 7 }, { column: 7, row: 7 }
@@ -137,7 +195,22 @@ const assetPaths = {
   playerUp: "/static/assets/player/player_up.png",
   playerDown: "/static/assets/player/player_down.png",
   playerLeft: "/static/assets/player/player_left.png",
-  playerRight: "/static/assets/player/player_right.png"
+  playerRight: "/static/assets/player/player_right.png",
+  burgerEmpty: "/static/assets/burger/burger_empty.png",
+  burger25: "/static/assets/burger/burger_25.png",
+  burger50: "/static/assets/burger/burger_50.png",
+  burger75: "/static/assets/burger/burger_75.png",
+  burgerComplete: "/static/assets/burger/burger_complete.png",
+  washEmpty: "/static/assets/washingstation/wash_empty.png",
+  washCountdown1: "/static/assets/washingstation/wash_countdown_1.png",
+  washCountdown2: "/static/assets/washingstation/wash_countdown_2.png",
+  washCountdown3: "/static/assets/washingstation/wash_countdown_3.png",
+  washUsedOne: "/static/assets/washingstation/wash_usedplate_one.png",
+  washUsedTwo: "/static/assets/washingstation/wash_usedplate_two.png",
+  washUsedThree: "/static/assets/washingstation/wash_usedplate_three.png",
+  washUsedFour: "/static/assets/washingstation/wash_usedplate_four.png",
+  serveCounterSmall: "/static/assets/servecounter/serve_counter_small.png",
+  serveCounterLarge: "/static/assets/servecounter/serve_counter_large.png"
 };
 
 const PLAYER_DISPLAY_SIZE = 52;
@@ -193,8 +266,6 @@ function updateHUD() {
   const s = Math.floor(state.timeLeft % 60).toString().padStart(2, "0");
   $("timeValue").textContent = `${m}:${s}`;
   const g = state.player ? pixelToGrid(state.player.x, state.player.y) : {column:1,row:1};
-  $("playerStatus").innerHTML =
-    `Position: <b>(${g.column}, ${g.row})</b>`;
   $("playerCoordinate").textContent = `(${g.column}, ${g.row})`;
   renderIngredientBackpack();
 }
@@ -209,7 +280,8 @@ const ingredientInfo = {
   bun: { label: "Bun", rawStatus: "uncooked", preparedStatus: "cooked", states: { uncooked: { label: "Uncooked", image: assetPaths.bunUncooked }, cooked: { label: "Cooked", image: assetPaths.bunCooked } } },
   patty: { label: "Patty", rawStatus: "uncooked", preparedStatus: "cooked", states: { uncooked: { label: "Uncooked", image: assetPaths.pattyUncooked }, cooked: { label: "Cooked", image: assetPaths.pattyCooked } } },
   lettuce: { label: "Lettuce", rawStatus: "uncut", preparedStatus: "chopped", states: { uncut: { label: "Uncut", image: assetPaths.lettuceUncut }, chopped: { label: "Chopped", image: assetPaths.lettuceChopped } } },
-  tomato: { label: "Tomato", rawStatus: "uncut", preparedStatus: "sliced", states: { uncut: { label: "Uncut", image: assetPaths.tomatoUncut }, sliced: { label: "Sliced", image: assetPaths.tomatoSliced } } }
+  tomato: { label: "Tomato", rawStatus: "uncut", preparedStatus: "sliced", states: { uncut: { label: "Uncut", image: assetPaths.tomatoUncut }, sliced: { label: "Sliced", image: assetPaths.tomatoSliced } } },
+  burger: { label: "Burger", rawStatus: "plated", preparedStatus: "plated", states: { plated: { label: "Plated", image: assetPaths.burgerComplete } } }
 };
 
 function renderIngredientBackpack() {
@@ -247,8 +319,23 @@ function setGuide(tab) {
     ],
     collect: [
       "Pick up finished food",
-      "Stand on any empty neighbour tile of a finished pan or board, then collect(). You need a free backpack slot.",
-      "move_to(5, 4)\ncollect()"
+      "Stand next to a finished pan, cutting board, or a complete plated burger at (7, 10) to (10, 10), then collect(). You need a free backpack slot.",
+      "move_to(7, 9)\ncollect()"
+    ],
+    plate: [
+      "Build a burger on a plate",
+      "Stand next to a plate at (7, 10), (8, 10), (9, 10), or (10, 10). plate() needs a prepared item: cooked bun, cooked patty, chopped lettuce, or sliced tomato. Four items make a complete burger.",
+      'move_to(7, 9)\nplate("bun")'
+    ],
+    wash: [
+      "Wash used plates",
+      "After you serve, used plates wait at the Washing Station (6, 10). Stand next to it and wash_plate(). The sink counts down, then a clean empty plate appears on a free plate tile.",
+      "move_to(6, 9)\nwash_plate()"
+    ],
+    serve: [
+      "Serve a plated burger",
+      "Stand next to the Serve Counter at (10, 1) or (10, 2) with a plated burger in the backpack, then serve(). The used plate goes to the washing station.",
+      "move_to(9, 1)\nserve()"
     ],
     wait: [
       "Pause the script",
@@ -296,7 +383,7 @@ document.querySelectorAll(".guide-tabs .tab").forEach(button => {
 function syncGuideDemo(tab) {
   const demo = $("guideDemo");
   const character = $("guideCharacter");
-  const playable = ["movement", "take", "cook", "cut", "collect"];
+  const playable = ["movement", "take", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
   if (playable.includes(tab)) {
     if (demo) demo.hidden = false;
     if (character) character.hidden = true;
@@ -315,7 +402,12 @@ const GUIDE_HIGHLIGHTS = {
   take: [{ column: 3, row: 10 }, { column: 3, row: 9 }],
   cook: [{ column: 4, row: 4 }, { column: 5, row: 4 }],
   cut: [{ column: 7, row: 4 }, { column: 8, row: 4 }],
-  collect: [{ column: 4, row: 4 }, { column: 5, row: 4 }]
+  collect: [{ column: 4, row: 4 }, { column: 5, row: 4 }],
+  plate: [{ column: 7, row: 10 }, { column: 7, row: 9 }],
+  wash: [{ column: 6, row: 10 }, { column: 6, row: 9 }],
+  serve: [{ column: 10, row: 1 }, { column: 9, row: 1 }],
+  wait: [],
+  status: [{ column: 2, row: 2 }]
 };
 
 function buildGuideDemo() {
@@ -336,7 +428,7 @@ function buildGuideDemo() {
         const img = document.createElement("img");
         if (stationEntry) {
           const [id, station] = stationEntry;
-          img.src = station.kind === "chest" ? assetPaths[station.closedTexture] : assetPaths[station.frameTextures[0]];
+          img.src = assetPaths[stationIdleTexture(station)];
           img.alt = station.label;
           img.dataset.stationId = id;
           guideDemo.stationImgs[id] = img;
@@ -384,14 +476,106 @@ function setGuideItem(column, row, src, visible) {
 
 function setGuideStation(id, textureKey) {
   const img = guideDemo.stationImgs[id];
-  if (img && assetPaths[textureKey]) img.src = assetPaths[textureKey];
+  if (img && assetPaths[textureKey]) {
+    img.src = assetPaths[textureKey];
+    img.style.visibility = "visible";
+  }
+}
+
+function setGuideStationVisible(id, visible) {
+  const img = guideDemo.stationImgs[id];
+  if (img) img.style.visibility = visible ? "visible" : "hidden";
 }
 
 function resetGuideStations() {
   Object.entries(stations).forEach(([id, station]) => {
     if (station.kind === "chest") setGuideStation(id, station.closedTexture);
+    else if (station.kind === "plate") setGuideStation(id, "burgerEmpty");
+    else if (station.kind === "wash") setGuideStation(id, "washEmpty");
+    else if (station.kind === "serve") setGuideStation(id, "serveCounterSmall");
     else if (station.frameTextures) setGuideStation(id, station.frameTextures[0]);
   });
+}
+
+function setGuideLayout(tab) {
+  const demo = $("guideDemo");
+  const waitStage = $("guideWaitStage");
+  const statusBox = $("guideStatusBox");
+  const miniWrap = $("guideMiniWrap");
+  const miniX = $("guideMiniX");
+  if (demo) {
+    demo.classList.toggle("is-wait", tab === "wait");
+    demo.classList.toggle("is-status", tab === "status");
+  }
+  if (waitStage) waitStage.hidden = tab !== "wait";
+  if (statusBox) statusBox.hidden = tab !== "status";
+  if (miniWrap) miniWrap.hidden = tab === "wait";
+  if (miniX) miniX.hidden = tab === "wait";
+}
+
+function guideWaitSeconds() {
+  const code = $("guideCode")?.textContent || "wait(1)";
+  const match = code.match(/wait\(\s*(\d+(?:\.\d+)?)\s*\)/);
+  const seconds = match ? Number(match[1]) : 1;
+  return Math.max(1, Math.min(10, Math.round(seconds) || 1));
+}
+
+function setGuideClockHand(degrees, animate) {
+  const hand = $("guideClockHand");
+  if (!hand) return;
+  hand.style.transition = animate ? "transform 1s linear" : "none";
+  hand.style.transform = `rotate(${degrees}deg)`;
+}
+
+async function playGuideWaitClock(alive) {
+  const seconds = guideWaitSeconds();
+  const label = $("guideClockLabel");
+  setGuideClockHand(0, false);
+  if (label) label.textContent = "1";
+  await waitGuide(40);
+  for (let beat = 1; beat <= seconds; beat++) {
+    if (!alive()) return;
+    if (label) label.textContent = String(beat);
+    setGuideClockHand(0, false);
+    void $("guideClockHand")?.offsetWidth;
+    setGuideClockHand(360, true);
+    await waitGuide(1000);
+  }
+  if (!alive()) return;
+  if (label) label.textContent = "Done";
+  await waitGuide(700);
+}
+
+function formatGuideStatusText() {
+  const g = state.player ? playerGrid() : { column: 2, row: 2 };
+  const backpack = {};
+  const pack = state.player ? state.backpack : [null, null, null, null];
+  pack.forEach((item, index) => {
+    if (!item) {
+      backpack[index + 1] = "empty";
+      return;
+    }
+    const info = ingredientInfo[item.type];
+    backpack[index + 1] = info ? `${info.states[item.status].label} ${info.label}` : item.type;
+  });
+  const backpackText = Object.entries(backpack).map(([slot, value]) => `${slot}: ${value}`).join(", ");
+  const order = state.currentOrder || recipes.burger;
+  const orderName = state.currentOrder
+    ? `${order.name} (Order #${order.id})`
+    : "Classic Burger (Order #1)";
+  const needed = order?.ingredients?.length
+    ? order.ingredients.join(", ")
+    : "bun, patty, lettuce, tomato";
+  return `Player position: (${g.column}, ${g.row})\nBackpack: {${backpackText}}\nCurrent order: ${orderName}\nNeeded: ${needed}`;
+}
+
+function updateGuideStatusBox(position) {
+  const box = $("guideStatusBox");
+  if (box) box.textContent = formatGuideStatusText();
+  if (position) {
+    GUIDE_HIGHLIGHTS.status = [position];
+    setGuideHighlights("status");
+  }
 }
 
 function setGuideHighlights(tab) {
@@ -501,12 +685,90 @@ async function playGuideScene(tab, alive) {
     setGuideItem(5, 4, assetPaths.bunCooked, true);
     setGuideStation("pan1", "panEmpty");
     await waitGuide(550);
+    return;
+  }
+
+  if (tab === "plate") {
+    const stand = await walkGuidePath(start, { column: 7, row: 9 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerUp");
+    const layers = [
+      [assetPaths.bunCooked, "burger25"],
+      [assetPaths.pattyCooked, "burger50"],
+      [assetPaths.lettuceChopped, "burger75"],
+      [assetPaths.tomatoSliced, "burgerComplete"]
+    ];
+    for (const [src, frame] of layers) {
+      if (!alive()) return;
+      setGuideItem(7, 9, src, true);
+      await waitGuide(280);
+      if (!alive()) return;
+      setGuideItem(7, 9, src, false);
+      setGuideStation("plate1", frame);
+      await waitGuide(340);
+    }
+    await waitGuide(280);
+    if (!alive()) return;
+    setGuideItem(7, 10, assetPaths.burgerComplete, true);
+    await waitGuide(260);
+    setGuideItem(7, 9, assetPaths.burgerComplete, true);
+    setGuideStationVisible("plate1", false);
+    await waitGuide(550);
+    return;
+  }
+
+  if (tab === "wash") {
+    setGuideStation("wash", "washUsedOne");
+    setGuideStationVisible("plate1", false);
+    const stand = await walkGuidePath(start, { column: 6, row: 9 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerUp");
+    await waitGuide(280);
+    await playToolFrames("wash", ["washCountdown3", "washCountdown2", "washCountdown1"], alive, 420);
+    if (!alive()) return;
+    setGuideStation("wash", "washEmpty");
+    setGuideStation("plate1", "burgerEmpty");
+    await waitGuide(700);
+    return;
+  }
+
+  if (tab === "serve") {
+    setGuideStation("wash", "washEmpty");
+    const stand = await walkGuidePath(start, { column: 9, row: 1 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerRight");
+    setGuideItem(9, 1, assetPaths.burgerComplete, true);
+    await waitGuide(320);
+    if (!alive()) return;
+    setGuideItem(10, 1, assetPaths.burgerComplete, true);
+    setGuideStation("serve1", "serveCounterLarge");
+    await waitGuide(320);
+    if (!alive()) return;
+    setGuideItem(10, 1, assetPaths.burgerComplete, false);
+    setGuideStation("serve1", "serveCounterSmall");
+    setGuideStation("wash", "washUsedOne");
+    await waitGuide(650);
+    return;
+  }
+
+  if (tab === "wait") {
+    await playGuideWaitClock(alive);
+    return;
+  }
+
+  if (tab === "status") {
+    const g = state.player ? playerGrid() : { column: 2, row: 2 };
+    const tile = isWalkable(g.column, g.row) ? g : start;
+    setGuidePlayer(tile.column, tile.row, "playerDown");
+    updateGuideStatusBox(tile);
+    await waitGuide(1200);
   }
 }
 
 function startGuideDemo(tab) {
   buildGuideDemo();
   stopGuideDemo();
+  setGuideLayout(tab);
   const gen = ++guideDemo.generation;
   if (!guideDemo.player) return;
   (async () => {
@@ -556,7 +818,9 @@ class KitchenScene extends Phaser.Scene {
     Object.entries(assetPaths).forEach(([key,path])=>this.load.image(key,path));
   }
   create(){
-    state.scene=this; this.cameras.main.setBackgroundColor("#F4D6A0"); this.drawKitchen();
+    state.scene=this; this.cameras.main.setBackgroundColor("#F4D6A0");
+    this.servePulseGen={};
+    this.drawKitchen();
     const start=gridToPixel(2,2); state.player={x:start.x,y:start.y};
     this.playerSprite=this.add.image(start.x,start.y,"playerDown").setDepth(5).setInteractive({ useHandCursor:true });
     this.playerSprite.setData("restSize", PLAYER_DISPLAY_SIZE);
@@ -583,6 +847,8 @@ class KitchenScene extends Phaser.Scene {
         ease:"Back.Out"
       });
     });
+    this.carrySprite=this.add.image(start.x,start.y-26,"bunUncooked").setDepth(8).setVisible(false).setDisplaySize(30,30);
+    this.carryFollowPlayer=false;
     this.playerSprite.on("pointerout",()=>{
       this.playerSprite.setData("hovering", false);
       this.tweens.killTweensOf(this.playerSprite, "displayWidth");
@@ -602,6 +868,31 @@ class KitchenScene extends Phaser.Scene {
       });
     });
     updateHUD();
+  }
+  waitMs(ms){
+    return new Promise(resolve=>this.time.delayedCall(ms,resolve));
+  }
+  syncCarryToPlayer(){
+    if(!this.carrySprite?.visible||!this.carryFollowPlayer||!this.playerSprite)return;
+    this.carrySprite.setPosition(this.playerSprite.x,this.playerSprite.y-26);
+  }
+  hideCarry(){
+    this.carryFollowPlayer=false;
+    this.carrySprite?.setVisible(false);
+  }
+  async showCarry(textureKey,where,ms){
+    if(!this.carrySprite)return;
+    if(textureKey)this.carrySprite.setTexture(textureKey);
+    this.carrySprite.setDisplaySize(30,30);
+    this.carrySprite.setVisible(true);
+    if(where==="player"){
+      this.carryFollowPlayer=true;
+      this.syncCarryToPlayer();
+    }else{
+      this.carryFollowPlayer=false;
+      this.carrySprite.setPosition(where.x,where.y);
+    }
+    await this.waitMs(ms);
   }
   applyPlayerSize(){
     if(!this.playerSprite)return;
@@ -623,10 +914,15 @@ class KitchenScene extends Phaser.Scene {
   }
   drawKitchen(){
     this.add.rectangle(240,240,480,480,0xF9E6BD).setStrokeStyle(4,0x8B5A3C);
-    const g=this.add.graphics(); g.lineStyle(1,0xD7B77F,1);
-    for(let i=0;i<=10;i++){const p=i*TILE_SIZE;g.lineBetween(p,0,p,480);g.lineBetween(0,p,480,p);}
+    const g=this.add.graphics().setDepth(1.5);
+    g.lineStyle(2,0xA07848,0.95);
+    for(let i=0;i<=10;i++){
+      const p=i*TILE_SIZE+0.5;
+      g.lineBetween(0.5,p,479.5,p);
+      g.lineBetween(p,0.5,p,479.5);
+    }
 
-    // Standalone tables (no table tiles under the four chests).
+    // Tables under leftover top counters and every tool. Chests and the sink stay without extra table tiles.
     this.tableSprites=[];
     tableCoordinates.forEach(({column,row})=>{
       const p=gridToPixel(column,row);
@@ -638,7 +934,7 @@ class KitchenScene extends Phaser.Scene {
     this.stationSprites={};
     this.stationLabels={};
     Object.entries(stations).forEach(([id,station])=>{
-      const texture=station.kind==="chest"?station.closedTexture:station.frameTextures[0];
+      const texture=stationIdleTexture(station);
       const size=44;
 
       const hoverSize=Math.round(size * 1.22);
@@ -649,6 +945,7 @@ class KitchenScene extends Phaser.Scene {
         .setInteractive({ useHandCursor:true });
       sprite.setData("restSize", size);
       sprite.setData("hoverSize", hoverSize);
+      if(station.kind==="plate"&&station.work?.phase==="vacant") sprite.setVisible(false);
 
       // Labels are hidden until the player hovers the station.
       const label=this.add.text(station.x,station.y,station.label,{
@@ -663,6 +960,7 @@ class KitchenScene extends Phaser.Scene {
       sprite.on("pointerover",()=>{
         label.setVisible(true);
         label.setAlpha(1);
+        if(station.kind==="serve") return;
         this.tweens.killTweensOf(sprite);
         this.tweens.add({
           targets:sprite,
@@ -674,14 +972,16 @@ class KitchenScene extends Phaser.Scene {
       });
 
       sprite.on("pointerout",()=>{
-        this.tweens.killTweensOf(sprite);
-        this.tweens.add({
-          targets:sprite,
-          displayWidth:sprite.getData("restSize"),
-          displayHeight:sprite.getData("restSize"),
-          duration:140,
-          ease:"Sine.easeOut"
-        });
+        if(station.kind!=="serve"){
+          this.tweens.killTweensOf(sprite);
+          this.tweens.add({
+            targets:sprite,
+            displayWidth:sprite.getData("restSize"),
+            displayHeight:sprite.getData("restSize"),
+            duration:140,
+            ease:"Sine.easeOut"
+          });
+        }
         this.tweens.add({
           targets:label,
           alpha:0,
@@ -693,6 +993,7 @@ class KitchenScene extends Phaser.Scene {
       this.stationSprites[id]=sprite;
       this.stationLabels[id]=label;
     });
+    this.startServePulses();
   }
   movePlayerTo(x,y){
     const from=pixelToGrid(this.playerSprite.x,this.playerSprite.y);
@@ -721,6 +1022,7 @@ class KitchenScene extends Phaser.Scene {
           state.player.x=this.playerSprite.x;
           state.player.y=this.playerSprite.y;
           if(this.playerLabel)this.playerLabel.setPosition(this.playerSprite.x,this.playerSprite.y-36);
+          this.syncCarryToPlayer();
           updateHUD();
         },
         onComplete:()=>{
@@ -786,6 +1088,59 @@ class KitchenScene extends Phaser.Scene {
     sprite.setTexture(station.frameTextures[0]);
     sprite.setDisplaySize(rest,rest);
   }
+  startServePulses(){
+    ["serve1","serve2"].forEach(id=>this.pulseServeCounter(id));
+  }
+  pulseServeCounter(id){
+    const sprite=this.stationSprites?.[id];
+    if(!sprite)return;
+    const rest=sprite.getData("restSize")||44;
+    const large=Math.round(rest*1.18);
+    this.servePulseGen[id]=(this.servePulseGen[id]||0)+1;
+    const gen=this.servePulseGen[id];
+    const beat=()=>{
+      if(!sprite.active||this.servePulseGen[id]!==gen)return;
+      sprite.setTexture("serveCounterSmall");
+      sprite.setDisplaySize(rest,rest);
+      this.tweens.add({
+        targets:sprite,
+        displayWidth:large,
+        displayHeight:large,
+        duration:420,
+        yoyo:true,
+        ease:"Sine.easeInOut",
+        onYoyo:()=>{ if(this.servePulseGen[id]===gen) sprite.setTexture("serveCounterLarge"); },
+        onComplete:()=>beat()
+      });
+    };
+    beat();
+  }
+  runWashJob(){
+    const station=stations.wash;
+    const sprite=this.stationSprites?.wash;
+    if(!station||!sprite)return;
+    const rest=sprite.getData("restSize")||44;
+    sprite.setVisible(true);
+    WASH_COUNTDOWN_FRAMES.forEach((texture,index)=>{
+      this.time.delayedCall(index*450,()=>{
+        if(!sprite.active||station.work?.phase!=="busy")return;
+        sprite.setTexture(texture);
+        sprite.setDisplaySize(rest,rest);
+      });
+    });
+    this.time.delayedCall(WASH_COUNTDOWN_FRAMES.length*450,()=>{
+      if(!station.work||station.work.phase!=="busy")return;
+      const vacant=Object.entries(stations).find(([,item])=>item.kind==="plate"&&item.work?.phase==="vacant");
+      if(vacant){
+        const [id,plate]=vacant;
+        plate.work={phase:"empty",items:[]};
+        updatePlateVisual(id);
+      }
+      station.work={phase:"empty"};
+      updateWashVisual();
+      log("Washed a plate. A clean empty plate is ready.");
+    });
+  }
 }
 
 function fail(message) {
@@ -796,6 +1151,7 @@ function fail(message) {
 function stopScript(error) {
   if (state.scriptStopped) return;
   state.scriptStopped = true;
+  state.scene?.hideCarry();
   const message = (error && (error.message || error.studentMessage)) || "that command is not allowed.";
   log("Stopped: " + message);
   log("Fix the problem, then click Run Python again.");
@@ -866,6 +1222,12 @@ function requireNear(name, commandText){
 }
 function requireItem(type){const item=findItem(type);if(!item)fail(`you do not have ${type} in the backpack.`);return item;}
 
+function itemTexture(type,status){
+  const image=ingredientInfo[type]?.states[status]?.image;
+  if(!image)return null;
+  return Object.keys(assetPaths).find(key=>assetPaths[key]===image)||null;
+}
+
 function addIngredient(type,status){
   const index=state.backpack.findIndex(item=>!item);
   if(index===-1)fail("backpack is full.");
@@ -896,6 +1258,9 @@ function startToolWork(type,role){
     const station=nearestStation(empty);
     state.scene.faceToward(station);
     removeIngredient(type,info.rawStatus);
+    const tex=itemTexture(type,info.rawStatus);
+    await state.scene.showCarry(tex,"player",280);
+    state.scene.hideCarry();
     station.work={phase:"busy",item:{type,status:info.rawStatus}};
     const id=stationId(station);
     log(role==="pan"?`Started cooking ${info.label.toLowerCase()}.`:`Started cutting ${info.label.toLowerCase()}.`);
@@ -939,32 +1304,140 @@ function executeGameCommand(name,args){
     return action(async()=>{
       if(!ingredientInfo[type])fail('take() needs "bun", "patty", "lettuce", or "tomato".');
       if(!backpackHasSpace())fail(`backpack is full, cannot take("${type}").`);
-      requireNear(type, `take("${type}")`);
-      state.scene.showChestAnimation(type);
-      await new Promise(resolve=>state.scene.time.delayedCall(450,resolve));
-      addIngredient(type,ingredientInfo[type].rawStatus);
+      const station=requireNear(type, `take("${type}")`);
+      const sprite=state.scene.stationSprites?.[type];
+      const rest=sprite?.getData("restSize")||44;
+      if(sprite){
+        sprite.setTexture(station.openTexture);
+        sprite.setDisplaySize(rest,rest);
+      }
+      const raw=ingredientInfo[type].rawStatus;
+      const tex=itemTexture(type,raw);
+      await state.scene.showCarry(tex,station,280);
+      addIngredient(type,raw);
+      await state.scene.showCarry(tex,"player",380);
+      if(sprite){
+        sprite.setTexture(station.closedTexture);
+        sprite.setDisplaySize(rest,rest);
+      }
+      await state.scene.waitMs(500);
+      state.scene.hideCarry();
       state.scene.showItemEffect(`Took ${ingredientInfo[type].label.toLowerCase()}.`,"");
-      log(`Took ${ingredientInfo[type].rawStatus} ${ingredientInfo[type].label.toLowerCase()}.`);
+      log(`Took ${raw} ${ingredientInfo[type].label.toLowerCase()}.`);
     });
   }
   if(name==="cook")return startToolWork(String(args[0]),"pan");
   if(name==="cut")return startToolWork(String(args[0]),"cuttingBoard");
   if(name==="collect"){
     return action(async()=>{
-      const nearby=nearbyStations("pan").concat(nearbyStations("cuttingBoard"));
-      if(!nearby.length)fail("stand next to a finished pan or cutting board before collect().");
-      const ready=nearby.filter(station=>station.work?.phase==="ready"&&station.work.item);
+      const nearbyTools=nearbyStations("pan").concat(nearbyStations("cuttingBoard"));
+      const readyTools=nearbyTools.filter(station=>station.work?.phase==="ready"&&station.work.item);
+      const readyPlates=nearbyStations("plate").filter(station=>station.work?.phase==="complete");
+      const ready=readyTools.concat(readyPlates);
+      if(!nearbyTools.length&&!nearbyStations("plate").length)fail("stand next to a finished pan, cutting board, or complete plate before collect().");
       if(!ready.length)fail("nothing is ready to collect() yet.");
       if(!backpackHasSpace())fail("backpack is full, cannot collect().");
       const station=nearestStation(ready);
-      const item=station.work.item;
       state.scene.faceToward(station);
+      if(station.kind==="plate"){
+        const burgerTex=itemTexture("burger","plated");
+        await state.scene.showCarry(burgerTex,station,260);
+        station.work={phase:"vacant",items:[]};
+        updatePlateVisual(stationId(station));
+        addIngredient("burger","plated");
+        await state.scene.showCarry(burgerTex,"player",550);
+        state.scene.hideCarry();
+        state.scene.showItemEffect("Collected plated burger.","");
+        log("Collected plated burger.");
+        return;
+      }
+      const item=station.work.item;
+      const tex=itemTexture(item.type,item.status);
+      await state.scene.showCarry(tex,station,280);
       addIngredient(item.type,item.status);
       station.work={phase:"empty",item:null};
       state.scene.resetToolVisual(stationId(station));
+      await state.scene.showCarry(tex,"player",550);
+      state.scene.hideCarry();
       const info=ingredientInfo[item.type];
       state.scene.showItemEffect(`Collected ${info.states[item.status].label.toLowerCase()} ${info.label.toLowerCase()}.`,"");
       log(`Collected ${info.states[item.status].label.toLowerCase()} ${info.label.toLowerCase()}.`);
+    });
+  }
+  if(name==="plate"){
+    const type=String(args[0]);
+    return action(async()=>{
+      const info=ingredientInfo[type];
+      const need=ORDER_MATERIALS.find(item=>item.type===type);
+      if(!info||!need)fail('plate() needs "bun", "patty", "lettuce", or "tomato".');
+      const nearby=nearbyStations("plate").filter(station=>station.work?.phase==="empty"||station.work?.phase==="holding");
+      if(!nearbyStations("plate").length)fail(`stand next to a plate before plate("${type}").`);
+      if(!nearby.length)fail("no plate here can take more food. Collect a finished burger, or use another plate.");
+      const prepared=state.backpack.find(item=>item&&item.type===type&&item.status===need.status);
+      if(!prepared)fail(`you need ${info.states[need.status].label.toLowerCase()} ${info.label.toLowerCase()} in the backpack to plate("${type}").`);
+      const open=nearby.filter(station=>!(station.work.items||[]).some(item=>item.type===type));
+      if(!open.length)fail(`that plate already has ${info.label.toLowerCase()}.`);
+      const station=nearestStation(open);
+      state.scene.faceToward(station);
+      removeIngredient(type,need.status);
+      const tex=itemTexture(type,need.status);
+      await state.scene.showCarry(tex,"player",280);
+      state.scene.hideCarry();
+      const items=(station.work.items||[]).concat([{type,status:need.status}]);
+      station.work={phase:items.length>=4?"complete":"holding",items};
+      updatePlateVisual(stationId(station));
+      await state.scene.waitMs(340);
+      log(items.length>=4?`Plated ${info.label.toLowerCase()}. Burger complete.`:`Plated ${info.label.toLowerCase()}.`);
+    });
+  }
+  if(name==="wash_plate"){
+    return action(async()=>{
+      if(!nearbyStations("wash").length)fail("stand next to the washing station before wash_plate().");
+      if(stations.wash.work?.phase==="busy")fail("the washing station is already busy.");
+      if((state.dirtyPlates||0)<1)fail("there are no used plates to wash.");
+      const vacant=Object.values(stations).some(station=>station.kind==="plate"&&station.work?.phase==="vacant");
+      if(!vacant)fail("there is no free plate tile for a clean plate. Collect a finished burger first.");
+      const station=stations.wash;
+      state.scene.faceToward(station);
+      state.dirtyPlates-=1;
+      station.work={phase:"busy"};
+      log("Started washing a plate.");
+      state.scene.runWashJob();
+    });
+  }
+  if(name==="serve"){
+    return action(async()=>{
+      if(!nearbyStations("serve").length)fail("stand next to the serve counter at (10, 1) or (10, 2) before serve().");
+      const burger=state.backpack.find(item=>item&&item.type==="burger"&&item.status==="plated");
+      if(!burger)fail("serve() needs a plated burger in the backpack. plate() four items, then collect().");
+      if((state.dirtyPlates||0)>=4)fail("the washing station is full of used plates. wash_plate() first.");
+      const counter=nearestStation(nearbyStations("serve"));
+      state.scene.faceToward(counter);
+      removeIngredient("burger","plated");
+      const burgerTex=itemTexture("burger","plated");
+      await state.scene.showCarry(burgerTex,"player",320);
+      const counterId=stationId(counter);
+      const counterSprite=state.scene.stationSprites?.[counterId];
+      const rest=counterSprite?.getData("restSize")||44;
+      if(counterSprite){
+        state.scene.servePulseGen[counterId]=(state.scene.servePulseGen[counterId]||0)+1;
+        state.scene.tweens.killTweensOf(counterSprite);
+        counterSprite.setTexture("serveCounterLarge");
+        counterSprite.setDisplaySize(rest,rest);
+      }
+      await state.scene.showCarry(burgerTex,counter,320);
+      state.scene.hideCarry();
+      if(counterSprite){
+        counterSprite.setTexture("serveCounterSmall");
+        counterSprite.setDisplaySize(rest,rest);
+        state.scene.pulseServeCounter(counterId);
+      }
+      state.dirtyPlates+=1;
+      updateWashVisual();
+      completeOrder();
+      state.scene.showItemEffect("Served a burger!","");
+      log(`Served a plated burger. +${SCORE_PER_ORDER} score.`);
+      log(`Orders done: ${state.ordersCompleted}. Score: ${state.score}.`);
     });
   }
   if(name==="move_to"){
@@ -976,17 +1449,15 @@ function executeGameCommand(name,args){
       log(`Moved to (${c}, ${r}).`);
     });
   }
-  if(name==="plate"||name==="wash_plate")return action(async()=>fail("plate() and wash_plate() are not in this kitchen yet."));
-  if(name==="serve")return action(async()=>{
-    for(const need of ORDER_MATERIALS){
-      if(!hasPreparedMaterial(need.type,need.status))fail("serve() needs cooked bun, cooked patty, chopped lettuce, and sliced tomato.");
+  if(name==="wait")return action(async()=>{
+    const seconds=Math.max(0,Math.min(10,Number(args[0]||1)));
+    const end=Date.now()+seconds*1000;
+    while(Date.now()<end){
+      if(state.scriptStopped)return;
+      await new Promise(r=>setTimeout(r,Math.min(80,end-Date.now())));
     }
-    ORDER_MATERIALS.forEach(need=>removeIngredient(need.type,need.status));
-    completeOrder();
-    log(`Order complete! +${SCORE_PER_ORDER} score.`);
-    log(`Orders done: ${state.ordersCompleted}. Score: ${state.score}.`);
+    log(`Waited ${seconds} second(s).`);
   });
-  if(name==="wait")return action(async()=>{const seconds=Math.max(0,Math.min(10,Number(args[0]||1)));await new Promise(r=>setTimeout(r,seconds*1000));log(`Waited ${seconds} second(s).`);});
   if(name==="status")return action(async()=>{
     const g=playerGrid();
     const backpack={};
@@ -1078,7 +1549,9 @@ async def wait(seconds=1):
 async def status():
     return await js.execute_game_command("status", [])
 `);
-    $("runBtn").disabled=false;$("consoleOutput").textContent="Python loaded. Write commands and click Run Python.";
+    $("runBtn").disabled=false;
+    if($("stopBtn"))$("stopBtn").disabled=true;
+    $("consoleOutput").textContent="Python loaded. Write commands and click Run Python.";
   }catch(e){log("Could not load Pyodide: "+e);}
 }
 async function runPython(){
@@ -1087,6 +1560,7 @@ async function runPython(){
   state.scriptStopped=false;
   state.actionQueue=Promise.resolve();
   if($("runBtn"))$("runBtn").disabled=true;
+  if($("stopBtn"))$("stopBtn").disabled=false;
   clearLog();
   try{
     const source=$("codeEditor").value;
@@ -1103,7 +1577,15 @@ await __pkr_main()
   }finally{
     state.pythonRunning=false;
     if($("runBtn"))$("runBtn").disabled=false;
+    if($("stopBtn"))$("stopBtn").disabled=true;
   }
+}
+function stopPython(){
+  if(!state.pythonRunning||state.scriptStopped)return;
+  state.scriptStopped=true;
+  state.scene?.hideCarry();
+  log("Stopped: Python stopped.");
+  if($("stopBtn"))$("stopBtn").disabled=true;
 }
 function startTimer(){const timer=setInterval(()=>{if(!state.running||state.gameEnded){clearInterval(timer);return;}state.timeLeft--;updateHUD();if(state.timeLeft<=0)finishGame();},1000);}
 async function finishGame(){if(state.gameEnded)return;state.gameEnded=true;state.running=false;state.finishedAt=new Date();showScreen("resultScreen");$("resultSummary").innerHTML=`<p><b>${escapeHtml(state.playerName)}</b>, your time is up.</p><p>Score: <b>${state.score}</b></p><p>Orders completed: <b>${state.ordersCompleted}</b></p>`;try{const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:state.playerName,score:state.score,game_mode:"Solo Burger Rush",time_completed:new Date().toISOString(),orders_completed:state.ordersCompleted})});if(!r.ok)throw new Error();$("resultSummary").innerHTML+=`<p class="small-note">Score saved to the shared leaderboard.</p>`;}catch(_){$("resultSummary").innerHTML+=`<p class="small-note">Could not save score. Check the server connection.</p>`;}}
@@ -1114,15 +1596,15 @@ $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
   playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.actionQueue=Promise.resolve();resetStationWork();showScreen("gameScreen");
   startGuideDemo("movement");
-  if(!state.scene){new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scene:KitchenScene});}
+  if(!state.scene){state.phaser=new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
 });
 $("runBtn").addEventListener("click",runPython);
-$("clearBtn").addEventListener("click",()=>{$("codeEditor").value="";clearLog();});
-$("hintBtn").addEventListener("click",()=>log('Hint: move_to(3, 9), take("bun"), move_to(5, 4), cook("bun"), wait(1), collect()'));
+if($("stopBtn"))$("stopBtn").addEventListener("click",stopPython);
 $("leaderboardBtn").addEventListener("click",showLeaderboard);
 $("backBtn").addEventListener("click",()=>showScreen("resultScreen"));
 $("restartBtn").addEventListener("click",()=>location.reload());
+window.addEventListener("resize",()=>{if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();});
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});
 fetch("/api/health").catch(()=>null);loadPython();
@@ -1171,20 +1653,27 @@ startGuideDemo("movement");
     open = !open;
     bar.setAttribute("aria-expanded", String(open));
     bar.classList.toggle("is-collapsed", !open);
+    panel.classList.toggle("is-collapsed", !open);
     clearTimeout(timer);
+    const refreshKitchen = () => {
+      if (state.phaser && state.phaser.scale) state.phaser.scale.refresh();
+    };
     if (!open) {
       setDelays(true);
       matrix.classList.add("is-on", "is-closing");
       matrix.classList.remove("is-opening");
       timer = window.setTimeout(() => {
         body.classList.add("curtain-closed");
+        matrix.classList.remove("is-on", "is-closing");
         busy = false;
+        refreshKitchen();
       }, 620);
     } else {
       body.classList.remove("curtain-closed");
       setDelays(false);
       matrix.classList.add("is-on", "is-opening");
       matrix.classList.remove("is-closing");
+      refreshKitchen();
       timer = window.setTimeout(() => {
         matrix.classList.remove("is-on", "is-opening");
         busy = false;
@@ -1202,21 +1691,120 @@ startGuideDemo("movement");
 })();
 
 /* =========================================================
-   PKR DELIVERY EVENT BRIDGE
-   The three visible cars are persistent order displays.
-   Keep a small API for future order/animation integration.
+   Delivery queue: cars walk the lane like the chef — one
+   step at a time, one car after another.
+   Slot 0 = back of queue (top), slot 2 = serving (bottom).
    ========================================================= */
 (() => {
-  const cars = [...document.querySelectorAll(".delivery-car")];
-  if (!cars.length) return;
+  const carsRoot = document.querySelector("#gameScreen .delivery-cars");
+  if (!carsRoot) return;
 
-  window.addEventListener("pkr:order-complete", () => {
-    // Delivery animation can be connected here later.
-  });
+  const SLOT_TOP = { spawn: -38, 0: 6, 1: 39, 2: 72, leave: 165 };
+  const STEP = 11;
+  let chain = Promise.resolve();
+
+  function cars() {
+    return [...carsRoot.querySelectorAll(".delivery-car")];
+  }
+
+  function bySlot() {
+    return cars()
+      .filter(car => ["0", "1", "2"].includes(String(car.dataset.slot)))
+      .sort((a, b) => Number(a.dataset.slot) - Number(b.dataset.slot));
+  }
+
+  function sineEase(t) {
+    return 0.5 - 0.5 * Math.cos(Math.PI * t);
+  }
+
+  function readTop(car) {
+    const inline = car.style.top;
+    if (inline) return parseFloat(inline);
+    const slot = car.dataset.slot;
+    return SLOT_TOP[slot] ?? (parseFloat(getComputedStyle(car).top) || 0);
+  }
+
+  function writeTop(car, pct) {
+    car.style.setProperty("top", `${pct}%`, "important");
+  }
+
+  function stepDuration(fromPct, toPct) {
+    const height = carsRoot.clientHeight || 400;
+    const px = Math.abs(toPct - fromPct) / 100 * height;
+    return Math.max(140, px * 5);
+  }
+
+  function driveStep(car, from, to) {
+    const duration = stepDuration(from, to);
+    return new Promise(resolve => {
+      const start = performance.now();
+      const tick = now => {
+        const t = Math.min(1, (now - start) / duration);
+        writeTop(car, from + (to - from) * sineEase(t));
+        if (t < 1) requestAnimationFrame(tick);
+        else {
+          writeTop(car, to);
+          resolve();
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  async function driveCar(car, targetSlot) {
+    car.classList.add("is-driving");
+    let from = readTop(car);
+    const to = SLOT_TOP[targetSlot];
+    const dir = Math.sign(to - from) || 1;
+    while (Math.abs(to - from) > 0.35) {
+      const next = from + dir * Math.min(STEP, Math.abs(to - from));
+      await driveStep(car, from, next);
+      from = next;
+    }
+    writeTop(car, to);
+    car.dataset.slot = String(targetSlot);
+    car.classList.remove("is-driving");
+  }
+
+  async function advanceQueue() {
+    const ordered = bySlot();
+    if (ordered.length < 3) return;
+    const leaving = ordered[2];
+    const middle = ordered[1];
+    const back = ordered[0];
+
+    await driveCar(leaving, "leave");
+    await driveCar(middle, "2");
+    await driveCar(back, "1");
+
+    leaving.classList.add("is-spawning");
+    leaving.dataset.slot = "spawn";
+    writeTop(leaving, SLOT_TOP.spawn);
+    void leaving.offsetWidth;
+    leaving.classList.remove("is-spawning");
+    await driveCar(leaving, "0");
+  }
+
+  function enqueueAdvance() {
+    chain = chain.then(advanceQueue).catch(() => null);
+  }
+
+  cars().forEach(car => writeTop(car, SLOT_TOP[car.dataset.slot] ?? 6));
+
+  window.addEventListener("pkr:order-complete", enqueueAdvance);
 
   window.PKRDeliveryCar = {
-    showOrder() { cars.forEach(car => car.classList.remove("hidden-car", "drive-away")); },
-    driveAway() { cars.forEach(car => { car.classList.add("drive-away"); }); },
-    reset() { cars.forEach(car => car.classList.remove("hidden-car", "drive-away")); }
+    showOrder() { cars().forEach(car => car.classList.remove("is-leaving", "is-spawning", "is-driving")); },
+    driveAway() { enqueueAdvance(); },
+    reset() {
+      cars().forEach((car, index) => {
+        car.classList.remove("is-leaving", "is-spawning", "is-driving");
+        car.dataset.slot = String(index);
+        writeTop(car, SLOT_TOP[index]);
+      });
+    }
   };
+
+  const testBtn = $("deliveryTest");
+  if (testBtn) testBtn.addEventListener("click", enqueueAdvance);
 })();

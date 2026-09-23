@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=stoppy" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -40,31 +40,30 @@
           </div>
 
           <div class="pkr-game-body">
-            <aside class="player-info-panel">
-              <div class="player-info-section">
-                <strong>Player's Status</strong>
-                <div id="playerStatus">Waiting to start…</div>
+            <aside class="panel status-panel player-info-panel">
+              <div class="status-window-bar">
+                <h2>Status Window</h2>
               </div>
-
-              <div class="player-info-section">
-                <strong>Player's Coordinate</strong>
-                <div id="playerCoordinate">(1, 1)</div>
-              </div>
-
-              <div class="player-info-section">
-                <strong>Backpack</strong>
-                <div id="backpack" class="backpack"></div>
+              <div class="status-window-body">
+                <div class="player-info-section">
+                  <strong>Player's Coordinate</strong>
+                  <div id="playerCoordinate">(1, 1)</div>
+                </div>
+                <div class="player-info-section">
+                  <strong>Backpack</strong>
+                  <div id="backpack" class="backpack"></div>
+                </div>
               </div>
             </aside>
 
             <div class="coordinate-board" aria-label="10 by 10 coordinate guide">
+              <div class="game-stage-wrap">
+                <div class="pkr-game-stage">
               <div class="y-axis" aria-hidden="true">
                 <span>10</span><span>9</span><span>8</span><span>7</span><span>6</span>
                 <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
               </div>
-
-              <div class="game-stage-wrap">
-                <div class="pkr-game-stage">
+  <div class="environment-side">
   <div class="environment-decor" aria-hidden="true">
     <div class="environment-lake"></div>
     <div class="environment-tree tree-1"></div>
@@ -78,11 +77,13 @@
   </div>
   <div class="delivery-lane" aria-hidden="true"></div>
   <div class="delivery-cars" aria-label="Burger delivery cars">
-    <div class="delivery-car delivery-car-1" title="Hover to view order">
+    <div class="delivery-car" data-slot="0" title="Hover to view order">
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
         <strong>Burger</strong>
-        <div class="completed-burger-slot" aria-hidden="true"></div>
+        <div class="completed-burger-slot" aria-hidden="true">
+          <img src="/static/assets/burger/burger_complete.png" alt="">
+        </div>
         <div class="order-materials">
           <img src="/static/assets/bun/bun_cooked.png" alt="Cooked bun">
           <img src="/static/assets/patty/patty_cooked.png" alt="Cooked patty">
@@ -91,11 +92,13 @@
         </div>
       </div>
     </div>
-    <div class="delivery-car delivery-car-2" title="Hover to view order">
+    <div class="delivery-car" data-slot="1" title="Hover to view order">
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
         <strong>Burger</strong>
-        <div class="completed-burger-slot" aria-hidden="true"></div>
+        <div class="completed-burger-slot" aria-hidden="true">
+          <img src="/static/assets/burger/burger_complete.png" alt="">
+        </div>
         <div class="order-materials">
           <img src="/static/assets/bun/bun_cooked.png" alt="Cooked bun">
           <img src="/static/assets/patty/patty_cooked.png" alt="Cooked patty">
@@ -104,11 +107,13 @@
         </div>
       </div>
     </div>
-    <div class="delivery-car delivery-car-3" title="Hover to view order">
+    <div class="delivery-car" data-slot="2" title="Hover to view order">
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
         <strong>Burger</strong>
-        <div class="completed-burger-slot" aria-hidden="true"></div>
+        <div class="completed-burger-slot" aria-hidden="true">
+          <img src="/static/assets/burger/burger_complete.png" alt="">
+        </div>
         <div class="order-materials">
           <img src="/static/assets/bun/bun_cooked.png" alt="Cooked bun">
           <img src="/static/assets/patty/patty_cooked.png" alt="Cooked patty">
@@ -118,16 +123,35 @@
       </div>
     </div>
   </div>
+  </div>
   <div id="gameContainer"></div>
                 <div id="errorFlash" class="error-flash" aria-hidden="true"></div>
                 <button id="deliveryTest" type="button" hidden>Test delivery</button>
-</div>
                 <div class="x-axis" aria-hidden="true">
                   <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
                   <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
                 </div>
+</div>
               </div>
             </div>
+
+        <section class="panel command-panel">
+          <div class="command-curtain-bar" id="commandCurtainBar" role="button" tabindex="0"
+               aria-expanded="true" aria-controls="commandCurtainBody">
+            <h2>Command Window</h2>
+            <span class="curtain-chevron">⌃</span>
+          </div>
+          <div id="commandCurtainBody" class="command-curtain-body">
+            <textarea id="codeEditor" spellcheck="false" placeholder="# Type your Python here, then click Run Python"></textarea>
+            <div class="editor-actions">
+              <button id="runBtn" class="primary-btn" disabled>▶ Run Python</button>
+              <button id="stopBtn" class="primary-btn stop-btn" disabled>■ Stop Python</button>
+            </div>
+            <div class="console-title">Command output</div>
+            <pre id="consoleOutput" class="console">Python is loading…</pre>
+          </div>
+          <div id="commandMatrix" class="command-matrix" aria-hidden="true"></div>
+        </section>
           </div>
         </section>
 
@@ -142,22 +166,35 @@
               <button type="button" class="tab" data-tab="cook">Cook</button>
               <button type="button" class="tab" data-tab="cut">Cut</button>
               <button type="button" class="tab" data-tab="collect">Collect</button>
+              <button type="button" class="tab" data-tab="plate">Plate</button>
+              <button type="button" class="tab" data-tab="wash">Wash</button>
+              <button type="button" class="tab" data-tab="serve">Serve</button>
               <button type="button" class="tab" data-tab="wait">Wait</button>
               <button type="button" class="tab" data-tab="status">Status</button>
             </div>
             <div class="visual-guide" id="visualGuide">
               <div class="guide-demo" id="guideDemo">
-                <div class="guide-mini-wrap">
+                <div class="guide-mini-wrap" id="guideMiniWrap">
                   <div class="guide-mini-y" aria-hidden="true">
                     <span>10</span><span>9</span><span>8</span><span>7</span><span>6</span>
                     <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
                   </div>
                   <div class="guide-mini-board" id="guideMiniBoard"></div>
                 </div>
-                <div class="guide-mini-x" aria-hidden="true">
+                <div class="guide-mini-x" id="guideMiniX" aria-hidden="true">
                   <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
                   <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
                 </div>
+                <div class="guide-wait-stage" id="guideWaitStage" hidden>
+                  <img class="guide-wait-player" src="/static/assets/player/player_down.png" alt="Player waiting">
+                  <div class="guide-clock" aria-hidden="true">
+                    <div class="guide-clock-face">
+                      <div class="guide-clock-hand" id="guideClockHand"></div>
+                    </div>
+                    <div class="guide-clock-label" id="guideClockLabel">1</div>
+                  </div>
+                </div>
+                <pre class="guide-status-box" id="guideStatusBox" hidden></pre>
               </div>
               <div class="guide-character" id="guideCharacter" hidden>🧑‍🍳</div>
               <div class="guide-action" id="guideAction">Walk on the 10 × 10 grid</div>
@@ -168,31 +205,6 @@
               <pre id="guideCode">move_to(3, 9)</pre>
             </div>
           </div>
-        </section>
-
-        <section class="panel command-panel">
-          <div class="command-curtain-bar" id="commandCurtainBar" role="button" tabindex="0"
-               aria-expanded="true" aria-controls="commandCurtainBody">
-            <h2>Command Window</h2>
-            <span class="curtain-chevron">⌃</span>
-          </div>
-          <div id="commandCurtainBody" class="command-curtain-body">
-            <textarea id="codeEditor" spellcheck="false"># Take a bun, start cooking, then come back to collect it
-move_to(3, 9)
-take("bun")
-move_to(5, 4)
-cook("bun")
-wait(1)
-collect()</textarea>
-            <div class="editor-actions">
-              <button id="runBtn" class="primary-btn" disabled>▶ Run Python</button>
-              <button id="clearBtn" class="secondary-btn">Clear</button>
-              <button id="hintBtn" class="secondary-btn">Hint</button>
-            </div>
-            <div class="console-title">Command output</div>
-            <pre id="consoleOutput" class="console">Python is loading…</pre>
-          </div>
-          <div id="commandMatrix" class="command-matrix" aria-hidden="true"></div>
         </section>
 
       </div>
@@ -214,6 +226,6 @@ collect()</textarea>
     </section>
   </main>
 
-  <script src="/static/game.js"></script>
+  <script src="/static/game.js?v=stoppy"></script>
 </body>
 </html>

@@ -675,7 +675,7 @@ html, body {
   grid-area: guide;
   width: 100%;
   min-height: 180px;
-  max-height: 400px;
+  max-height: 460px;
   overflow: hidden;
 }
 
@@ -885,9 +885,18 @@ html, body {
   width: 56px;
   height: 56px;
   margin: 0 auto 8px;
-  border: 2px dashed #c4a574;
+  border: none;
   border-radius: 8px;
-  background: #fff8e7;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+#gameScreen .completed-burger-slot img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 #gameScreen .order-materials {
@@ -1684,6 +1693,11 @@ html, body {
   justify-content: start;
 }
 
+#gameScreen .guide-mini-wrap[hidden],
+#gameScreen .guide-mini-x[hidden] {
+  display: none !important;
+}
+
 #gameScreen .guide-mini-y,
 #gameScreen .guide-mini-x {
   font-size: 8px;
@@ -1771,4 +1785,1072 @@ html, body {
 #gameScreen .guide-mini-item.is-hidden {
   opacity: 0;
   visibility: hidden;
+}
+
+#gameScreen .guide-wait-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 200px;
+  min-height: 160px;
+}
+
+#gameScreen .guide-wait-stage[hidden] {
+  display: none !important;
+}
+
+#gameScreen .guide-wait-player {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+#gameScreen .guide-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#gameScreen .guide-clock-face {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fffdf5;
+  border: 3px solid #8B5A3C;
+  box-shadow: inset 0 0 0 2px #F6C945;
+}
+
+#gameScreen .guide-clock-face::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3A2A2A;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+#gameScreen .guide-clock-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 3px;
+  height: 18px;
+  margin-left: -1.5px;
+  background: #E84A3C;
+  border-radius: 2px 2px 1px 1px;
+  transform-origin: 50% 100%;
+  transform: rotate(0deg);
+}
+
+#gameScreen .guide-clock-label {
+  min-width: 36px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #3A2A2A;
+}
+
+#gameScreen .guide-status-box {
+  display: block;
+  margin: 6px 0 0;
+  width: 216px;
+  max-height: 78px;
+  overflow: auto;
+  padding: 6px 7px;
+  border-radius: 6px;
+  background: #172231;
+  color: #b8f2c2;
+  font: 8px/1.35 Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+#gameScreen .guide-status-box[hidden] {
+  display: none !important;
+}
+
+#gameScreen .visual-guide:has(.guide-demo.is-status) {
+  max-height: 340px;
+}
+
+/* =========================================================
+   Viewport fit: keep Game, Guide, and Command fully visible.
+   Kitchen stays 3:2 (grass + square grid) so tiles never stretch.
+   ========================================================= */
+html, body {
+  height: 100%;
+}
+
+#gameScreen {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+#gameScreen .pkr-game-layout {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr) !important;
+  grid-template-rows: minmax(0, 1fr) minmax(210px, 32vh) !important;
+  grid-template-areas:
+    "game game"
+    "guide command" !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+}
+
+#gameScreen .pkr-game-window {
+  min-height: 0 !important;
+  max-height: none !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+#gameScreen .pkr-game-body {
+  overflow: hidden !important;
+}
+
+#gameScreen .coordinate-board {
+  min-width: 0 !important;
+  height: 100% !important;
+}
+
+#gameScreen .y-axis {
+  width: 32px !important;
+  font: 700 13px/1 Arial, sans-serif !important;
+  color: #3A2A2A !important;
+}
+
+#gameScreen .coordinate-board {
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) 22px !important;
+}
+
+#gameScreen .game-stage-wrap {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  place-items: center;
+}
+
+#gameScreen .pkr-game-stage {
+  position: relative !important;
+  width: min(100%, calc(100cqh * 3 / 2)) !important;
+  height: min(100%, calc(100cqw * 2 / 3)) !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: 3 / 2;
+  overflow: hidden !important;
+}
+
+#gameScreen .game-stage-wrap {
+  container-type: size;
+}
+
+#gameScreen #gameContainer {
+  position: absolute !important;
+  left: 16.666% !important;
+  top: 0 !important;
+  width: 66.668% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+#gameScreen #gameContainer canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated;
+}
+
+#gameScreen .x-axis {
+  width: 66.668% !important;
+  margin-left: 16.666% !important;
+  font: 700 13px/1 Arial, sans-serif !important;
+  color: #3A2A2A !important;
+}
+
+#gameScreen .guidance-panel,
+#gameScreen .command-panel {
+  min-height: 0 !important;
+  max-height: none !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#gameScreen .guidance-content {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow: auto;
+}
+
+#gameScreen .command-curtain-body {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#gameScreen .command-panel textarea {
+  flex: 1 1 auto;
+  min-height: 80px !important;
+  height: auto !important;
+}
+
+@media (max-width: 900px) {
+  #gameScreen .pkr-game-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(0, 1fr) minmax(150px, 26vh) minmax(150px, 26vh) !important;
+    grid-template-areas:
+      "game"
+      "guide"
+      "command" !important;
+  }
+}
+
+/* =========================================================
+   Command Window sits in the Game Window (right of kitchen).
+   Guide Window takes the full bottom row. Axes hug the 10×10 grid.
+   ========================================================= */
+#gameScreen .pkr-game-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 6fr) minmax(0, 4fr) !important;
+  grid-template-areas:
+    "game"
+    "guide" !important;
+}
+
+#gameScreen .pkr-game-window {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#gameScreen .pkr-game-header {
+  min-height: 44px !important;
+  padding: 6px 14px !important;
+  flex: 0 0 auto;
+}
+
+#gameScreen .pkr-game-body {
+  display: grid !important;
+  grid-template-columns: minmax(128px, 13%) minmax(0, 1fr) minmax(240px, 30%) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 8px 10px 10px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#gameScreen .player-info-panel {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex: none !important;
+}
+
+#gameScreen .coordinate-board {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 0 22px 0 !important;
+  box-sizing: border-box;
+}
+
+#gameScreen .game-stage-wrap {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  place-items: center;
+  overflow: visible !important;
+  container-type: size;
+}
+
+#gameScreen .pkr-game-stage {
+  overflow: visible !important;
+}
+
+#gameScreen .y-axis {
+  position: absolute !important;
+  left: 16.666% !important;
+  top: 0 !important;
+  width: 22px !important;
+  height: 100% !important;
+  transform: translateX(-100%);
+  padding: 0 3px 0 0 !important;
+  z-index: 6;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+#gameScreen .x-axis {
+  position: absolute !important;
+  left: 16.666% !important;
+  top: 100% !important;
+  width: 66.668% !important;
+  height: 20px !important;
+  margin: 3px 0 0 0 !important;
+  padding: 0 !important;
+  z-index: 6;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+#gameScreen .pkr-game-window .command-panel {
+  grid-area: auto !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: stretch !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#gameScreen .pkr-game-window .command-panel.is-collapsed {
+  height: auto !important;
+  align-self: start !important;
+}
+
+#gameScreen .command-curtain-body.curtain-closed {
+  max-height: 0 !important;
+  min-height: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  flex: 0 0 0 !important;
+}
+
+#gameScreen .guidance-panel {
+  grid-area: guide !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+@media (max-width: 900px) {
+  #gameScreen .pkr-game-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(0, 6fr) minmax(0, 4fr) !important;
+    grid-template-areas:
+      "game"
+      "guide" !important;
+  }
+
+  #gameScreen .pkr-game-body {
+    grid-template-columns: minmax(110px, 18%) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) minmax(160px, 38%) !important;
+  }
+
+  #gameScreen .pkr-game-window .command-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+/* =========================================================
+   Status Window (Command Window look) + 3:2 kitchen:environment
+   Kitchen is the square 10×10. Park, lake, stones, and the car
+   path live together on the right. Y-axis sits left of kitchen.
+   ========================================================= */
+#gameScreen .status-panel,
+#gameScreen .player-info-panel.status-panel {
+  background: #111827 !important;
+  border: 2px solid #374151 !important;
+  border-radius: 12px !important;
+  color: #d1fae5 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+#gameScreen .status-window-bar {
+  min-height: 52px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  color: #d1fae5;
+  background: #111827;
+  border-bottom: 1px solid #374151;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+#gameScreen .status-window-bar h2 {
+  margin: 0;
+  font: 700 16px/1 Consolas, "Courier New", monospace;
+  color: #d1fae5;
+}
+
+#gameScreen .status-window-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 12px 16px;
+  background: #0b1220;
+}
+
+#gameScreen .status-panel .player-info-section strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #86efac;
+  font: 700 12px/1.2 Consolas, "Courier New", monospace;
+  letter-spacing: 0.02em;
+}
+
+#gameScreen .status-panel #playerCoordinate {
+  font-family: Consolas, "Courier New", monospace !important;
+  font-size: 18px !important;
+  color: #d1fae5 !important;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+#gameScreen .status-panel .backpack {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+#gameScreen .status-panel .backpack .slot {
+  min-height: 64px !important;
+  min-width: 0 !important;
+  border: 1px solid #374151 !important;
+  border-radius: 6px !important;
+  background: #111827 !important;
+  color: #d1fae5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+}
+
+#gameScreen .status-panel .backpack .slot span {
+  color: #86efac !important;
+  font: 700 9px/1.2 Consolas, "Courier New", monospace !important;
+  text-align: center;
+}
+
+#gameScreen .status-panel .backpack .slot small {
+  color: #9ca3af !important;
+}
+
+#gameScreen .coordinate-board {
+  padding: 0 0 22px 26px !important;
+}
+
+#gameScreen .pkr-game-stage {
+  width: min(100%, calc(100cqh * 5 / 3)) !important;
+  height: min(100%, calc(100cqw * 3 / 5)) !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: 5 / 3;
+  overflow: visible !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#gameScreen #gameContainer {
+  left: 0 !important;
+  top: 0 !important;
+  width: 60% !important;
+  height: 100% !important;
+  z-index: 5;
+  border: 4px solid #8b5a3c;
+  box-sizing: border-box;
+}
+
+#gameScreen .y-axis {
+  left: 0 !important;
+  transform: translateX(-100%);
+  color: #3A2A2A !important;
+  z-index: 8;
+}
+
+#gameScreen .x-axis {
+  left: 0 !important;
+  width: 60% !important;
+  margin: 3px 0 0 0 !important;
+}
+
+#gameScreen .environment-side {
+  position: absolute;
+  left: 60%;
+  top: 0;
+  width: 40%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 4;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255,255,255,.22) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 82%, rgba(255,255,255,.18) 0 2px, transparent 3px),
+    radial-gradient(circle at 42% 58%, rgba(255,255,255,.12) 0 2px, transparent 3px),
+    #78bd58;
+  box-shadow: inset 0 0 0 3px rgba(55,105,45,.18);
+}
+
+#gameScreen .environment-decor {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: none !important;
+  z-index: 1;
+}
+
+#gameScreen .environment-lake {
+  left: 6% !important;
+  top: 22% !important;
+  width: 38% !important;
+  height: 42% !important;
+  z-index: 2;
+}
+
+#gameScreen .tree-1 { left: 4% !important; top: 3% !important; }
+#gameScreen .tree-2 { left: 28% !important; top: 8% !important; }
+#gameScreen .tree-3 { left: 6% !important; top: 70% !important; }
+#gameScreen .tree-4 { left: 30% !important; top: 80% !important; }
+#gameScreen .tree-5 { left: 42% !important; top: 2% !important; }
+#gameScreen .tree-6 { left: 44% !important; top: 86% !important; }
+#gameScreen .rock-1 { left: 40% !important; top: 18% !important; }
+#gameScreen .rock-2 { left: 12% !important; top: 64% !important; }
+
+#gameScreen .environment-tree,
+#gameScreen .environment-rock {
+  z-index: 3;
+}
+
+#gameScreen .delivery-lane {
+  position: absolute !important;
+  left: 58% !important;
+  right: auto !important;
+  top: 0 !important;
+  width: 32% !important;
+  height: 100% !important;
+  z-index: 2;
+  background:
+    linear-gradient(90deg, transparent 0 44%, rgba(255,255,255,.55) 44% 48%, transparent 48% 52%, rgba(255,255,255,.55) 52% 56%, transparent 56%),
+    repeating-linear-gradient(180deg, #d7c49a 0 28px, #d7c49a 28px 46px, #cbb890 46px 52px);
+  border-left: 4px solid #b09c73 !important;
+  border-right: 4px solid #b09c73;
+  box-shadow: inset 0 0 0 2px rgba(90,70,40,.12);
+}
+
+#gameScreen .delivery-cars {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+#gameScreen .delivery-car {
+  left: 60% !important;
+  right: auto !important;
+  width: 28% !important;
+  height: 22% !important;
+  transition: transform .16s ease;
+}
+
+#gameScreen .delivery-car[data-slot="0"] { top: 6%; }
+#gameScreen .delivery-car[data-slot="1"] { top: 39%; }
+#gameScreen .delivery-car[data-slot="2"] { top: 72%; }
+#gameScreen .delivery-car[data-slot="leave"] {
+  top: 165%;
+  opacity: 1;
+  pointer-events: none;
+}
+#gameScreen .delivery-car[data-slot="spawn"],
+#gameScreen .delivery-car.is-spawning {
+  top: -38%;
+  opacity: 1;
+  transition: none !important;
+}
+
+#gameScreen .delivery-car.is-driving {
+  pointer-events: none;
+  transform: none !important;
+}
+
+#gameScreen .delivery-car[data-slot="leave"]:hover,
+#gameScreen .delivery-car[data-slot="spawn"]:hover {
+  transform: none;
+}
+
+#gameScreen .delivery-car:hover {
+  z-index: 40;
+}
+
+#gameScreen .delivery-order-card {
+  left: auto !important;
+  right: 112% !important;
+  z-index: 50;
+}
+
+/* =========================================================
+   Viewport-safe layout:
+   Game + Guide always keep their right edges on screen.
+   Body: Status (top-left) + Command (bottom-left) | Kitchen (right 2/3).
+   ========================================================= */
+html, body, .app-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+#gameScreen {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+}
+
+#gameScreen .pkr-game-layout {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 6fr) minmax(0, 4fr) !important;
+  grid-template-areas:
+    "game"
+    "guide" !important;
+  gap: 8px !important;
+}
+
+#gameScreen .pkr-game-window,
+#gameScreen .guidance-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#gameScreen .pkr-game-header {
+  min-height: 40px !important;
+  padding: 6px 10px !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  overflow: hidden;
+}
+
+#gameScreen .pkr-game-header h2 {
+  white-space: nowrap !important;
+  font-size: clamp(15px, 1.6vw, 22px) !important;
+  min-width: 0;
+}
+
+#gameScreen .hud {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 6px;
+  overflow: hidden;
+}
+
+#gameScreen .hud span {
+  white-space: nowrap;
+  font-size: clamp(11px, 1.1vw, 14px);
+}
+
+#gameScreen .pkr-game-body {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) !important;
+  grid-template-rows: minmax(176px, 1.15fr) minmax(0, 2.6fr) !important;
+  grid-template-areas:
+    "status kitchen"
+    "command kitchen" !important;
+  grid-auto-flow: row !important;
+  gap: 8px !important;
+  padding: 8px !important;
+  overflow: hidden !important;
+  min-width: 0 !important;
+}
+
+#gameScreen .status-panel,
+#gameScreen .player-info-panel.status-panel {
+  grid-area: status !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  width: auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  container-type: size;
+  container-name: pkr-status;
+}
+
+#gameScreen .coordinate-board {
+  grid-area: kitchen !important;
+  padding: 0 0 22px 24px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+#gameScreen .pkr-game-window .command-panel {
+  grid-area: command !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+}
+
+#gameScreen .pkr-game-window .command-panel.is-collapsed {
+  height: auto !important;
+  align-self: stretch !important;
+}
+
+#gameScreen .status-window-body {
+  flex-direction: row !important;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 10px !important;
+  overflow: hidden;
+}
+
+#gameScreen .status-window-body .player-info-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+#gameScreen .status-panel .status-window-bar {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+#gameScreen .status-panel .status-window-bar h2 {
+  font-size: 14px;
+}
+
+#gameScreen .status-panel .player-info-section strong {
+  margin-bottom: 4px;
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+#gameScreen .status-panel #playerCoordinate {
+  font-size: 15px !important;
+  padding: 6px 8px;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+
+#gameScreen .status-panel .backpack {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 5px !important;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: stretch;
+}
+
+#gameScreen .status-panel .backpack .slot {
+  min-height: 0 !important;
+  min-width: 0 !important;
+  height: auto;
+  padding: 3px 2px;
+}
+
+#gameScreen .status-panel .backpack .slot img {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+#gameScreen .command-curtain-body {
+  min-width: 0 !important;
+}
+
+#gameScreen .command-panel textarea {
+  min-height: 72px !important;
+  width: 100% !important;
+}
+
+#gameScreen .command-panel .editor-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  overflow: visible;
+}
+
+#gameScreen .command-panel .editor-actions button,
+#gameScreen #runBtn,
+#gameScreen #stopBtn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 5px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+}
+
+#gameScreen #stopBtn {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+#gameScreen #stopBtn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+#gameScreen .game-stage-wrap {
+  display: block !important;
+  place-items: unset !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  container-type: size;
+}
+
+#gameScreen .pkr-game-stage {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+}
+
+#gameScreen #gameContainer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: min(72cqw, 100cqh) !important;
+  height: min(72cqw, 100cqh) !important;
+}
+
+#gameScreen .y-axis {
+  left: 0 !important;
+  top: 0 !important;
+  height: min(72cqw, 100cqh) !important;
+}
+
+#gameScreen .x-axis {
+  left: 0 !important;
+  top: min(72cqw, 100cqh) !important;
+  width: min(72cqw, 100cqh) !important;
+  margin-left: 0 !important;
+}
+
+#gameScreen .environment-side {
+  left: min(72cqw, 100cqh) !important;
+  top: 0 !important;
+  width: calc(100% - min(72cqw, 100cqh)) !important;
+  height: min(72cqw, 100cqh) !important;
+  overflow: visible !important;
+  z-index: 12 !important;
+}
+
+#gameScreen .guidance-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: none !important;
+}
+
+#gameScreen .guidance-panel .panel-heading {
+  flex: 0 0 auto;
+}
+
+#gameScreen .guidance-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  height: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  padding: 10px 12px !important;
+}
+
+#gameScreen .guide-tabs {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+}
+
+#gameScreen .visual-guide,
+#gameScreen .command-guide {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: auto;
+}
+
+#gameScreen .environment-side,
+#gameScreen .environment-decor,
+#gameScreen .delivery-lane,
+#gameScreen .delivery-cars,
+#gameScreen .environment-tree,
+#gameScreen .environment-lake,
+#gameScreen .environment-rock {
+  display: block !important;
+}
+
+#gameScreen .delivery-cars {
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+@media (max-width: 1100px) {
+  #gameScreen .game-stage-wrap,
+  #gameScreen .pkr-game-stage {
+    width: min(100%, calc(100cqh * 5 / 3)) !important;
+  }
+
+  #gameScreen .coordinate-board {
+    width: 100% !important;
+  }
+
+  #gameScreen #gameContainer {
+    left: 0 !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  #gameScreen .pkr-game-window {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #gameScreen .environment-side,
+  #gameScreen .environment-decor,
+  #gameScreen .delivery-lane,
+  #gameScreen .delivery-cars {
+    display: block !important;
+  }
+}
+
+@media (max-width: 900px) {
+  #gameScreen .pkr-game-layout {
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 6fr) minmax(0, 4fr) !important;
+    grid-template-areas:
+      "game"
+      "guide" !important;
+  }
+
+  #gameScreen .pkr-game-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) !important;
+    grid-template-rows: minmax(176px, 1.15fr) minmax(0, 2.6fr) !important;
+  }
+
+  #gameScreen .pkr-game-window .command-panel {
+    grid-area: command !important;
+    grid-column: auto !important;
+  }
+
+  #gameScreen .guidance-content {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+}
+
+/* Maximized / wide screens: Status | Kitchen | Command fill the width */
+@media (min-width: 1280px) {
+  #gameScreen .pkr-game-body {
+    grid-template-columns: minmax(168px, 0.68fr) minmax(0, 2.15fr) minmax(340px, 1.45fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-areas: "status kitchen command" !important;
+  }
+
+  #gameScreen .pkr-game-window .command-panel {
+    grid-area: command !important;
+    height: 100% !important;
+  }
+
+  #gameScreen .command-panel textarea {
+    min-height: 120px !important;
+  }
+
+  #gameScreen .status-window-body {
+    flex-direction: column !important;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  #gameScreen .status-window-body .player-info-section:first-child {
+    flex: 0 0 auto;
+  }
+
+  #gameScreen .status-window-body .player-info-section:last-child {
+    flex: 1 1 auto;
+  }
+
+  #gameScreen .status-panel #playerCoordinate {
+    flex: 0 0 auto;
+  }
+
+  #gameScreen .status-panel .backpack {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    max-width: none;
+  }
+
+  #gameScreen .status-panel .backpack .slot {
+    min-height: 0 !important;
+  }
+
+  #gameScreen .status-panel .backpack .slot img {
+    width: clamp(20px, 4cqh, 36px) !important;
+    height: clamp(20px, 4cqh, 36px) !important;
+  }
 }
