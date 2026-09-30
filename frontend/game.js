@@ -842,37 +842,80 @@ function tutorialNext() {
   showTutorialStep();
 }
 
+let currentScreenId = "mainMenu";
 function showScreen(id) {
   ["mainMenu", "nameScreen", "gameScreen", "resultScreen", "leaderboardScreen", "tutorialScreen"].forEach(screenId => {
     const el = $(screenId); if (el) el.classList.toggle("hidden", screenId !== id);
   });
   window.scrollTo(0, 0);
+  if (id !== currentScreenId) {
+    currentScreenId = id;
+    if (id === "gameScreen") stopMenuMusic();
+    else startMenuMusic(true);
+  }
 }
-function startMenuMusic() { const music=$("menuMusic"); if (!music)return; music.volume=.35; music.play().catch(()=>{}); }
-function unlockMenuAudio(){ startMenuMusic(); }
+function stopAudioEl(audio) {
+  if (!audio) return;
+  try { audio.pause(); audio.currentTime = 0; } catch (_) {}
+}
 
 const soundCache = {};
+let typingClip = null;
+let activeSfx = null;
+
+function stopSfx() {
+  stopAudioEl(activeSfx);
+  Object.values(soundCache).forEach(stopAudioEl);
+  stopAudioEl(typingClip);
+  activeSfx = null;
+}
+
+function startMenuMusic(fromStart = false) {
+  const music = $("menuMusic");
+  if (!music) return;
+  music.volume = .35;
+  if (fromStart || music.paused) {
+    stopAudioEl(music);
+    music.play().catch(() => {});
+  }
+}
+function stopMenuMusic() { stopAudioEl($("menuMusic")); }
+function unlockMenuAudio(){ startMenuMusic(true); }
+
 function playOptionalSound(name) {
-  let audio=soundCache[name];
-  if(!audio){ audio=new Audio(`/static/sounds/${name}.mp3`); audio.preload="auto"; audio.volume=.65; soundCache[name]=audio; }
-  audio.currentTime=0; audio.play().catch(()=>{});
+  stopSfx();
+  let audio = soundCache[name];
+  if (!audio) {
+    audio = new Audio(`/static/sounds/${name}.mp3`);
+    audio.preload = "auto";
+    audio.volume = .65;
+    soundCache[name] = audio;
+  }
+  stopAudioEl(audio);
+  activeSfx = audio;
+  audio.play().catch(() => {});
 }
 
 $("playMenuBtn").addEventListener("click",()=>{playOptionalSound("button_click");showScreen("nameScreen");$("playerName").focus();});
 $("menuLeaderboardBtn")?.addEventListener("click",()=>{playOptionalSound("button_click");showLeaderboard("mainMenu");});
 $("menuTutorialBtn")?.addEventListener("click",()=>{playOptionalSound("button_click");openTutorial();});
 $("nameBackBtn").addEventListener("click",()=>{playOptionalSound("button_click");showScreen("mainMenu");});
-$("startBtn").addEventListener("click",()=>playOptionalSound("button_click"));
 
 let typingAudioContext=null,lastTypingSoundAt=0;
 function playTypingSound(){
   const now=performance.now(); if(now-lastTypingSoundAt<28)return; lastTypingSoundAt=now;
-  const a=new Audio("/static/sounds/typing.wav"); a.volume=.18; a.play().catch(()=>{
+  if (!typingClip) {
+    typingClip = new Audio("/static/sounds/typing.wav");
+    typingClip.volume = .18;
+  }
+  stopAudioEl(typingClip);
+  activeSfx = typingClip;
+  typingClip.play().catch(()=>{
     try{typingAudioContext ||= new (window.AudioContext||window.webkitAudioContext)();
       const o=typingAudioContext.createOscillator(),g=typingAudioContext.createGain();o.type="square";o.frequency.value=620;
       g.gain.setValueAtTime(.035,typingAudioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,typingAudioContext.currentTime+.035);
       o.connect(g);g.connect(typingAudioContext.destination);o.start();o.stop(typingAudioContext.currentTime+.035);}catch(_){}}
-  );
+  });
 }
 $("codeEditor")?.addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const k=["Backspace","Delete","Enter","Tab","Space"];if(e.key.length===1||k.includes(e.key))playTypingSound();});
 
