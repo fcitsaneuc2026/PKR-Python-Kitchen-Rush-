@@ -6,7 +6,7 @@ const state = {
   running: false, pyodide: null, scene: null, player: null,
   backpack: [null, null, null, null], currentOrder: null, orderNumber: 1,
   items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false,
-  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false
+  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false, quitPromptOpen: false
 };
 
 // ============================================================
@@ -1651,7 +1651,7 @@ function stopPython(){
   log("Stopped: Python stopped.");
   if($("stopBtn"))$("stopBtn").disabled=true;
 }
-function startTimer(){const timer=setInterval(()=>{if(!state.running||state.gameEnded){clearInterval(timer);return;}state.timeLeft--;updateHUD();if(state.timeLeft<=0)finishGame();},1000);}
+function startTimer(){const timer=setInterval(()=>{if(!state.running||state.gameEnded||state.quitPromptOpen){if(state.gameEnded)clearInterval(timer);return;}state.timeLeft--;updateHUD();if(state.timeLeft<=0)endRound(true);},1000);}
 function scorePayload(finished){
   return {
     player_name:state.playerName,
@@ -1661,6 +1661,28 @@ function scorePayload(finished){
     orders_completed:state.ordersCompleted,
     finished
   };
+}
+function formatDuration(seconds){
+  const total=Math.max(0,Math.round(Number(seconds)||0));
+  const m=Math.floor(total/60);
+  const s=String(total%60).padStart(2,"0");
+  return `${m}:${s}`;
+}
+function setQuitConfirmOpen(open){
+  state.quitPromptOpen=!!open;
+  const el=$("quitConfirm");
+  if(!el)return;
+  el.hidden=!open;
+  el.classList.toggle("hidden",!open);
+}
+function askQuitGame(){
+  if(!state.running||state.gameEnded)return;
+  playOptionalSound("button_click");
+  setQuitConfirmOpen(true);
+}
+function cancelQuitGame(){
+  playOptionalSound("button_click");
+  setQuitConfirmOpen(false);
 }
 function saveUnfinishedRound(){
   if(state.scoreSaved||state.gameEnded||!state.running||!String(state.playerName||"").trim())return;
@@ -1672,20 +1694,45 @@ function saveUnfinishedRound(){
   }catch(_){}
   fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body,keepalive:true}).catch(()=>null);
 }
-async function finishGame(){
+function showEndScreen({finished,name,served,score,timeTaken,saved}){
+  if($("resultBadge"))$("resultBadge").textContent=finished?"TIME'S UP":"LEFT EARLY";
+  if($("resultHeadline"))$("resultHeadline").textContent=finished?"Kitchen closed!":"Shift paused";
+  if($("resultPlayerName"))$("resultPlayerName").textContent=name||"Chef";
+  if($("resultServed"))$("resultServed").textContent=String(served??0);
+  if($("resultTime"))$("resultTime").textContent=timeTaken||"0:00";
+  if($("resultScore"))$("resultScore").textContent=String(score??0);
+  if($("resultNote")){
+    $("resultNote").textContent=saved===false
+      ?"Could not save this round to the leaderboard."
+      :"Saved to the shared leaderboard.";
+  }
+  showScreen("resultScreen");
+}
+async function endRound(finished){
   if(state.gameEnded)return;
+  setQuitConfirmOpen(false);
   state.gameEnded=true;
   state.running=false;
+  state.scriptStopped=true;
+  state.pythonRunning=false;
+  state.scene?.hideCarry();
   state.finishedAt=new Date();
-  showScreen("resultScreen");
-  $("resultSummary").innerHTML=`<p><b>${escapeHtml(state.playerName)}</b>, your time is up.</p><p>Score: <b>${state.score}</b></p><p>Orders completed: <b>${state.ordersCompleted}</b></p>`;
+  const elapsed=Math.max(0,(state.timeLimit||0)-(state.timeLeft||0));
+  showEndScreen({
+    finished:!!finished,
+    name:state.playerName,
+    served:state.ordersCompleted,
+    score:state.score,
+    timeTaken:formatDuration(elapsed),
+    saved:true
+  });
+  if(state.scoreSaved)return;
+  state.scoreSaved=true;
   try{
-    state.scoreSaved=true;
-    const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(scorePayload(true))});
-    if(!r.ok)throw new Error();
-    $("resultSummary").innerHTML+=`<p class="small-note">Score saved to the shared leaderboard.</p>`;
+    const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(scorePayload(!!finished))});
+    if($("resultNote"))$("resultNote").textContent=r.ok?"Saved to the shared leaderboard.":"Could not save this round to the leaderboard.";
   }catch(_){
-    $("resultSummary").innerHTML+=`<p class="small-note">Could not save score. Check the server connection.</p>`;
+    if($("resultNote"))$("resultNote").textContent="Could not save this round to the leaderboard.";
   }
 }
 function bestScoresByPlayer(rows){
@@ -1750,7 +1797,7 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 
 $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
-  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
+  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.quitPromptOpen=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
   startGuideDemo("movement");
   if(!state.scene){state.phaser=new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
@@ -1761,6 +1808,9 @@ $("leaderboardBtn").addEventListener("click",()=>showLeaderboard("resultScreen")
 $("backBtn").addEventListener("click",()=>showScreen(state.leaderboardReturn||"mainMenu"));
 $("restartBtn").addEventListener("click",()=>location.reload());
 $("tutorialNextBtn")?.addEventListener("click",tutorialNext);
+$("gameBackBtn")?.addEventListener("click",askQuitGame);
+$("quitConfirmYes")?.addEventListener("click",()=>{playOptionalSound("button_click");endRound(false);});
+$("quitConfirmNo")?.addEventListener("click",cancelQuitGame);
 window.addEventListener("pagehide",e=>{ if(!e.persisted) saveUnfinishedRound(); });
 window.addEventListener("beforeunload",saveUnfinishedRound);
 window.addEventListener("resize",()=>{if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();});

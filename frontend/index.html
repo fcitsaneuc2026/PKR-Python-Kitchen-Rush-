@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=tutunfin" />
+  <link rel="stylesheet" href="/static/style.css?v=lb8b" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -35,7 +35,10 @@
 
         <section class="panel pkr-game-window">
           <div class="pkr-game-header">
-            <h2>Game Window</h2>
+            <div class="pkr-game-header-left">
+              <button id="gameBackBtn" type="button" class="primary-btn menu-play-btn game-back-btn" aria-label="Back to main menu">←</button>
+              <h2>Game Window</h2>
+            </div>
             <div class="hud">
               <span>Time: <b id="timeValue">10:00</b></span>
               <span>Score: <b id="scoreValue">0</b></span>
@@ -214,12 +217,44 @@
       </div>
     </section>
 
-    <section id="resultScreen" class="screen-card hidden">
-      <h2>Kitchen challenge complete!</h2>
-      <div id="resultSummary"></div>
-      <button id="leaderboardBtn" class="primary-btn">View shared leaderboard</button>
-      <button id="restartBtn" class="secondary-btn">Play again</button>
+    <section id="resultScreen" class="result-menu hidden">
+      <div class="menu-badge" id="resultBadge">TIME'S UP</div>
+      <h2 class="game-title">
+        <span id="resultHeadline">Kitchen closed!</span>
+        <small id="resultPlayerName">Chef</small>
+      </h2>
+      <div class="result-stats">
+        <div class="result-stat">
+          <span>Served</span>
+          <strong id="resultServed">0</strong>
+        </div>
+        <div class="result-stat">
+          <span>Time taken</span>
+          <strong id="resultTime">0:00</strong>
+        </div>
+        <div class="result-stat">
+          <span>Score</span>
+          <strong id="resultScore">0</strong>
+        </div>
+      </div>
+      <p class="result-note" id="resultNote"></p>
+      <div class="menu-actions">
+        <button id="leaderboardBtn" class="primary-btn menu-play-btn">Leaderboards</button>
+        <button id="restartBtn" class="primary-btn menu-play-btn">Main menu</button>
+      </div>
     </section>
+
+    <div id="quitConfirm" class="quit-confirm hidden" hidden>
+      <div class="menu-badge">Stop cooking?</div>
+      <h2 class="game-title">
+        <span>Leave the kitchen?</span>
+        <small>This round will be saved as left early.</small>
+      </h2>
+      <div class="menu-actions">
+        <button id="quitConfirmYes" type="button" class="primary-btn menu-play-btn">Yes, stop game</button>
+        <button id="quitConfirmNo" type="button" class="primary-btn menu-play-btn">Keep playing</button>
+      </div>
+    </div>
 
     <section id="leaderboardScreen" class="leaderboard-dash hidden">
       <div class="lb-dash-card">
@@ -274,6 +309,6 @@
     </section>
   </main>
 
-  <script src="/static/game.js?v=tutunfin"></script>
+  <script src="/static/game.js?v=endback2"></script>
 </body>
 </html>
