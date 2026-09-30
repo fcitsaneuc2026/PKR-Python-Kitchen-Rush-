@@ -1,4 +1,35 @@
 const $ = (id) => document.getElementById(id);
+const LANG_STORAGE = "pkr-lang";
+let uiLang = localStorage.getItem(LANG_STORAGE) === "zh" ? "zh" : "en";
+function t(key, vars) {
+  const table = (window.PKR_I18N && (PKR_I18N[uiLang] || PKR_I18N.en)) || {};
+  const fallback = (window.PKR_I18N && PKR_I18N.en) || {};
+  let s = table[key] ?? fallback[key] ?? key;
+  if (vars) Object.keys(vars).forEach(k => { s = String(s).split("{" + k + "}").join(String(vars[k])); });
+  return s;
+}
+function itemPhrase(type, status) {
+  const stateLabel = t("st_" + status);
+  const name = t("ing_" + type);
+  return uiLang === "zh" ? `${stateLabel}${name}` : `${stateLabel} ${name}`;
+}
+function stationDisplayName(id, station) {
+  const s = station || stations[id];
+  if (!s) return id;
+  if (s.kind === "chest") return t("chest_" + id);
+  if (s.role === "pan") return t("cookingPan");
+  if (s.role === "cuttingBoard") return t("cuttingBoard");
+  if (s.kind === "wash") return t("washingStation");
+  if (s.kind === "plate") return t("plateStation");
+  if (s.kind === "serve") return t("serveCounter");
+  return s.label;
+}
+function getLesson(tab) {
+  const en = GUIDE_LESSONS[tab] || GUIDE_LESSONS.movement;
+  const zh = window.PKR_GUIDE_ZH && (PKR_GUIDE_ZH[tab] || PKR_GUIDE_ZH.movement);
+  if (uiLang === "zh" && zh) return [zh[0], zh[1], en[2]];
+  return en;
+}
 
 const state = {
   playerName: "", score: 0, ordersCompleted: 0,
@@ -6,7 +37,8 @@ const state = {
   running: false, pyodide: null, scene: null, player: null,
   backpack: [null, null, null, null], currentOrder: null, orderNumber: 1,
   items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false,
-  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false, quitPromptOpen: false
+  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false, quitPromptOpen: false,
+  lastEndScreen: null, leaderboardRows: null
 };
 
 // ============================================================
@@ -21,7 +53,7 @@ const GRID_ORIGIN = { x: 24, y: 24 };
 function gridToPixel(column, row) {
   const c = Number(column), r = Number(row);
   if (!Number.isInteger(c) || !Number.isInteger(r) || c < 1 || c > 10 || r < 1 || r > 10) {
-    throw new Error("Grid coordinates must be from 1 to 10. Bottom-left is (1,1), top-right is (10,10).");
+    throw new Error(t("gridRange"));
   }
   return { x: GRID_ORIGIN.x + (c - 1) * TILE_SIZE, y: GRID_ORIGIN.y + (10 - r) * TILE_SIZE };
 }
@@ -286,10 +318,11 @@ const ingredientInfo = {
 
 function renderIngredientBackpack() {
   $("backpack").innerHTML = state.backpack.map((item, index) => {
-    if (!item) return `<div class="slot"><span>Slot ${index + 1}</span>-</div>`;
+    if (!item) return `<div class="slot"><span>${t("slot", { n: index + 1 })}</span>-</div>`;
     const info = ingredientInfo[item.type];
     const visual = info.states[item.status];
-    return `<div class="slot"><img src="${visual.image}" alt="${visual.label} ${info.label}"><span>${info.label}<small>${visual.label}</small></span></div>`;
+    const phrase = itemPhrase(item.type, item.status);
+    return `<div class="slot"><img src="${visual.image}" alt="${phrase}"><span>${t("ing_" + item.type)}<small>${t("st_" + item.status)}</small></span></div>`;
   }).join("");
 }
 function newOrder() {
@@ -351,10 +384,8 @@ const TUTORIAL_STEPS = ["movement", "take", "cook", "cut", "collect", "plate", "
 let tutorialIndex = 0;
 
 function setGuide(tab) {
-  const guides = GUIDE_LESSONS;
-  const guide = guides[tab] || guides.movement;
-  const [action, text, code] = guide;
-  const activeTab = guides[tab] ? tab : "movement";
+  const [action, text, code] = getLesson(tab);
+  const activeTab = GUIDE_LESSONS[tab] ? tab : "movement";
   const content = document.querySelector("#gameScreen .guidance-content");
   const applyCopy = () => {
     $("guideAction").textContent = action;
@@ -571,7 +602,7 @@ async function playGuideWaitClock(alive) {
     await waitGuide(1000);
   }
   if (!alive()) return;
-  if (label) label.textContent = "Done";
+  if (label) label.textContent = t("clockDone");
   await waitGuide(700);
 }
 
@@ -581,21 +612,21 @@ function formatGuideStatusText() {
   const pack = state.player ? state.backpack : [null, null, null, null];
   pack.forEach((item, index) => {
     if (!item) {
-      backpack[index + 1] = "empty";
+      backpack[index + 1] = t("empty");
       return;
     }
     const info = ingredientInfo[item.type];
-    backpack[index + 1] = info ? `${info.states[item.status].label} ${info.label}` : item.type;
+    backpack[index + 1] = info ? itemPhrase(item.type, item.status) : item.type;
   });
   const backpackText = Object.entries(backpack).map(([slot, value]) => `${slot}: ${value}`).join(", ");
   const order = state.currentOrder || recipes.burger;
   const orderName = state.currentOrder
-    ? `${order.name} (Order #${order.id})`
-    : "Classic Burger (Order #1)";
+    ? t("orderN", { name: t("classicBurger"), id: order.id })
+    : t("orderN", { name: t("classicBurger"), id: 1 });
   const needed = order?.ingredients?.length
     ? order.ingredients.join(", ")
     : "bun, patty, lettuce, tomato";
-  return `Player position: (${g.column}, ${g.row})\nBackpack: {${backpackText}}\nCurrent order: ${orderName}\nNeeded: ${needed}`;
+  return `${t("statusPos", { c: g.column, r: g.row })}\n${t("statusPack", { pack: backpackText })}\n${t("statusOrder", { order: orderName })}\n${t("statusNeed", { need: needed })}`;
 }
 
 function updateGuideStatusBox(position) {
@@ -812,14 +843,13 @@ function startGuideDemo(tab) {
 
 function showTutorialStep() {
   const tab = TUTORIAL_STEPS[tutorialIndex] || "movement";
-  const lesson = GUIDE_LESSONS[tab] || GUIDE_LESSONS.movement;
-  const [action, text, code] = lesson;
-  if ($("tutorialStepLabel")) $("tutorialStepLabel").textContent = `Step ${tutorialIndex + 1} of ${TUTORIAL_STEPS.length}`;
+  const [action, text, code] = getLesson(tab);
+  if ($("tutorialStepLabel")) $("tutorialStepLabel").textContent = t("tutorialStep", { n: tutorialIndex + 1, total: TUTORIAL_STEPS.length });
   if ($("tutorialTitle")) $("tutorialTitle").textContent = action;
   if ($("tutorialText")) $("tutorialText").textContent = text;
   if ($("tutorialCode")) $("tutorialCode").textContent = code;
   const last = tutorialIndex >= TUTORIAL_STEPS.length - 1;
-  if ($("tutorialNextBtn")) $("tutorialNextBtn").textContent = last ? "Done" : "→";
+  if ($("tutorialNextBtn")) $("tutorialNextBtn").textContent = last ? t("done") : "→";
   startGuideDemo(tab);
 }
 
@@ -942,7 +972,7 @@ class KitchenScene extends Phaser.Scene {
     this.playerSprite.setData("restSize", PLAYER_DISPLAY_SIZE);
     this.playerSprite.setData("hoverSize", Math.round(PLAYER_DISPLAY_SIZE * 1.22));
     this.applyPlayerSize();
-    this.playerLabel=this.add.text(start.x,start.y-36,"Player",{
+    this.playerLabel=this.add.text(start.x,start.y-36,t("player"),{
       fontFamily:"Arial",
       fontSize:"11px",
       fontStyle:"bold",
@@ -1064,7 +1094,7 @@ class KitchenScene extends Phaser.Scene {
       if(station.kind==="plate"&&station.work?.phase==="vacant") sprite.setVisible(false);
 
       // Labels are hidden until the player hovers the station.
-      const label=this.add.text(station.x,station.y,station.label,{
+      const label=this.add.text(station.x,station.y,stationDisplayName(id,station),{
         fontFamily:"Arial",
         fontSize:"11px",
         fontStyle:"bold",
@@ -1114,9 +1144,9 @@ class KitchenScene extends Phaser.Scene {
   movePlayerTo(x,y){
     const from=pixelToGrid(this.playerSprite.x,this.playerSprite.y);
     const target=pixelToGrid(x,y);
-    if(!isWalkable(target.column,target.row))fail("you cannot stand on a table or station.");
+    if(!isWalkable(target.column,target.row))fail(t("failStandStation"));
     const path=shortestPath(from,target);
-    if(!path)fail("there is no empty path to that tile.");
+    if(!path)fail(t("failNoPath"));
     const steps=path.slice(1);
     if(!steps.length){
       state.player.x=this.playerSprite.x;
@@ -1254,13 +1284,13 @@ class KitchenScene extends Phaser.Scene {
       }
       station.work={phase:"empty"};
       updateWashVisual();
-      log("Washed a plate. A clean empty plate is ready.");
+      log(t("logWashed"));
     });
   }
 }
 
 function fail(message) {
-  const error = new Error(message || "that command is not allowed.");
+  const error = new Error(message || t("failNotAllowed"));
   error.ruleFail = true;
   throw error;
 }
@@ -1268,9 +1298,9 @@ function stopScript(error) {
   if (state.scriptStopped) return;
   state.scriptStopped = true;
   state.scene?.hideCarry();
-  const message = (error && (error.message || error.studentMessage)) || "that command is not allowed.";
-  log("Stopped: " + message);
-  log("Fix the problem, then click Run Python again.");
+  const message = (error && (error.message || error.studentMessage)) || t("failNotAllowed");
+  log(t("stoppedPrefix", { message }));
+  log(t("fixAgain"));
   flashError();
 }
 function flashError() {
@@ -1324,19 +1354,19 @@ function stationId(station) {
 }
 
 function addItem(type,status="raw"){
-  const index=state.backpack.findIndex(x=>!x); if(index===-1)fail("backpack is full.");
+  const index=state.backpack.findIndex(x=>!x); if(index===-1)fail(t("failPackFull"));
   const info=itemInfo[type]; state.backpack[index]={type,status,emoji:status==="prepared"?info.cooked:info.raw};renderBackpack();
 }
 function findItem(type){return state.backpack.find(x=>x&&x.type===type);}
-function removeItem(type){const i=state.backpack.findIndex(x=>x&&x.type===type);if(i===-1)fail(`you do not have ${type} in the backpack.`);const item=state.backpack[i];state.backpack[i]=null;renderBackpack();return item;}
+function removeItem(type){const i=state.backpack.findIndex(x=>x&&x.type===type);if(i===-1)fail(t("failNoItem",{type}));const item=state.backpack[i];state.backpack[i]=null;renderBackpack();return item;}
 function requireNear(name, commandText){
   const station=stations[name] || stationForRole(name);
-  if(!station) fail(`there is no ${name} station.`);
-  if(!nearStation(name)) fail(`stand next to the ${station.label} before ${commandText || "using it"}.`);
+  if(!station) fail(t("failNoStation",{name}));
+  if(!nearStation(name)) fail(t("failStandNext",{station:stationDisplayName(stationId(station),station),command:commandText || t("usingIt")}));
   state.scene?.faceToward(station);
   return station;
 }
-function requireItem(type){const item=findItem(type);if(!item)fail(`you do not have ${type} in the backpack.`);return item;}
+function requireItem(type){const item=findItem(type);if(!item)fail(t("failNoItem",{type}));return item;}
 
 function itemTexture(type,status){
   const image=ingredientInfo[type]?.states[status]?.image;
@@ -1346,14 +1376,14 @@ function itemTexture(type,status){
 
 function addIngredient(type,status){
   const index=state.backpack.findIndex(item=>!item);
-  if(index===-1)fail("backpack is full.");
-  if(!ingredientInfo[type]?.states[status])fail("that item cannot go in the backpack.");
+  if(index===-1)fail(t("failPackFull"));
+  if(!ingredientInfo[type]?.states[status])fail(t("failBadItem"));
   state.backpack[index]={type,status};
   renderIngredientBackpack();
 }
 function removeIngredient(type,status){
   const index=state.backpack.findIndex(item=>item&&item.type===type&&(!status||item.status===status));
-  if(index===-1)fail(`you do not have that ${type} in the backpack.`);
+  if(index===-1)fail(t("failNoThatItem",{type}));
   const item=state.backpack[index];
   state.backpack[index]=null;
   renderIngredientBackpack();
@@ -1364,13 +1394,13 @@ function startToolWork(type,role){
     const info=ingredientInfo[type];
     const allowed=role==="pan"?["bun","patty"]:["lettuce","tomato"];
     const command=role==="pan"?`cook("${type}")`:`cut("${type}")`;
-    if(!info||!allowed.includes(type))fail(role==="pan"?`cook() only works with "bun" or "patty".`:`cut() only works with "lettuce" or "tomato".`);
+    if(!info||!allowed.includes(type))fail(role==="pan"?t("failCookArgs"):t("failCutArgs"));
     const nearby=nearbyStations(role);
-    if(!nearby.length)fail(role==="pan"?`stand next to a cooking pan before ${command}.`:`stand next to a cutting board before ${command}.`);
+    if(!nearby.length)fail(role==="pan"?t("failStandPan",{command}):t("failStandBoard",{command}));
     const empty=nearby.filter(station=>station.work?.phase==="empty");
-    if(!empty.length)fail(role==="pan"?"all nearby pans are busy. Wait, or use another pan.":"all nearby cutting boards are busy. Wait, or use another board.");
+    if(!empty.length)fail(role==="pan"?t("failPansBusy"):t("failBoardsBusy"));
     const rawItem=state.backpack.find(item=>item&&item.type===type&&item.status===info.rawStatus);
-    if(!rawItem)fail(`you need ${info.states[info.rawStatus].label.toLowerCase()} ${info.label.toLowerCase()} in the backpack to ${command}.`);
+    if(!rawItem)fail(t("failNeedItemCmd",{item:itemPhrase(type,info.rawStatus),command}));
     const station=nearestStation(empty);
     state.scene.faceToward(station);
     removeIngredient(type,info.rawStatus);
@@ -1379,7 +1409,7 @@ function startToolWork(type,role){
     state.scene.hideCarry();
     station.work={phase:"busy",item:{type,status:info.rawStatus}};
     const id=stationId(station);
-    log(role==="pan"?`Started cooking ${info.label.toLowerCase()}.`:`Started cutting ${info.label.toLowerCase()}.`);
+    log(role==="pan"?t("logStartCook",{item:t("ing_"+type)}):t("logStartCut",{item:t("ing_"+type)}));
     state.scene.runToolJob(id,info.preparedStatus);
   });
 }
@@ -1414,12 +1444,12 @@ function executeGameCommand(name,args){
     stopped.scriptStopped=true;
     throw stopped;
   }
-  if(state.gameEnded)fail("the round is over.");
+  if(state.gameEnded)fail(t("failRoundOver"));
   if(name==="take"){
     const type=String(args[0]);
     return action(async()=>{
-      if(!ingredientInfo[type])fail('take() needs "bun", "patty", "lettuce", or "tomato".');
-      if(!backpackHasSpace())fail(`backpack is full, cannot take("${type}").`);
+      if(!ingredientInfo[type])fail(t("failTakeArgs"));
+      if(!backpackHasSpace())fail(t("failPackTake",{type}));
       const station=requireNear(type, `take("${type}")`);
       const sprite=state.scene.stationSprites?.[type];
       const rest=sprite?.getData("restSize")||44;
@@ -1438,8 +1468,8 @@ function executeGameCommand(name,args){
       }
       await state.scene.waitMs(500);
       state.scene.hideCarry();
-      state.scene.showItemEffect(`Took ${ingredientInfo[type].label.toLowerCase()}.`,"");
-      log(`Took ${raw} ${ingredientInfo[type].label.toLowerCase()}.`);
+      state.scene.showItemEffect(t("logTook",{item:itemPhrase(type,raw)}),"");
+      log(t("logTook",{item:itemPhrase(type,raw)}));
     });
   }
   if(name==="cook")return startToolWork(String(args[0]),"pan");
@@ -1450,9 +1480,9 @@ function executeGameCommand(name,args){
       const readyTools=nearbyTools.filter(station=>station.work?.phase==="ready"&&station.work.item);
       const readyPlates=nearbyStations("plate").filter(station=>station.work?.phase==="complete");
       const ready=readyTools.concat(readyPlates);
-      if(!nearbyTools.length&&!nearbyStations("plate").length)fail("stand next to a finished pan, cutting board, or complete plate before collect().");
-      if(!ready.length)fail("nothing is ready to collect() yet.");
-      if(!backpackHasSpace())fail("backpack is full, cannot collect().");
+      if(!nearbyTools.length&&!nearbyStations("plate").length)fail(t("failStandCollect"));
+      if(!ready.length)fail(t("failNothingCollect"));
+      if(!backpackHasSpace())fail(t("failPackCollect"));
       const station=nearestStation(ready);
       state.scene.faceToward(station);
       if(station.kind==="plate"){
@@ -1463,8 +1493,8 @@ function executeGameCommand(name,args){
         addIngredient("burger","plated");
         await state.scene.showCarry(burgerTex,"player",550);
         state.scene.hideCarry();
-        state.scene.showItemEffect("Collected plated burger.","");
-        log("Collected plated burger.");
+        state.scene.showItemEffect(t("logBurger"),"");
+        log(t("logBurger"));
         return;
       }
       const item=station.work.item;
@@ -1475,9 +1505,9 @@ function executeGameCommand(name,args){
       state.scene.resetToolVisual(stationId(station));
       await state.scene.showCarry(tex,"player",550);
       state.scene.hideCarry();
-      const info=ingredientInfo[item.type];
-      state.scene.showItemEffect(`Collected ${info.states[item.status].label.toLowerCase()} ${info.label.toLowerCase()}.`,"");
-      log(`Collected ${info.states[item.status].label.toLowerCase()} ${info.label.toLowerCase()}.`);
+      const phrase=itemPhrase(item.type,item.status);
+      state.scene.showItemEffect(t("logCollected",{item:phrase}),"");
+      log(t("logCollected",{item:phrase}));
     });
   }
   if(name==="plate"){
@@ -1485,14 +1515,14 @@ function executeGameCommand(name,args){
     return action(async()=>{
       const info=ingredientInfo[type];
       const need=ORDER_MATERIALS.find(item=>item.type===type);
-      if(!info||!need)fail('plate() needs "bun", "patty", "lettuce", or "tomato".');
+      if(!info||!need)fail(t("failPlateArgs"));
       const nearby=nearbyStations("plate").filter(station=>station.work?.phase==="empty"||station.work?.phase==="holding");
-      if(!nearbyStations("plate").length)fail(`stand next to a plate before plate("${type}").`);
-      if(!nearby.length)fail("no plate here can take more food. Collect a finished burger, or use another plate.");
+      if(!nearbyStations("plate").length)fail(t("failStandPlate",{type}));
+      if(!nearby.length)fail(t("failPlateFull"));
       const prepared=state.backpack.find(item=>item&&item.type===type&&item.status===need.status);
-      if(!prepared)fail(`you need ${info.states[need.status].label.toLowerCase()} ${info.label.toLowerCase()} in the backpack to plate("${type}").`);
+      if(!prepared)fail(t("failNeedItemCmd",{item:itemPhrase(type,need.status),command:`plate("${type}")`}));
       const open=nearby.filter(station=>!(station.work.items||[]).some(item=>item.type===type));
-      if(!open.length)fail(`that plate already has ${info.label.toLowerCase()}.`);
+      if(!open.length)fail(t("failPlateHas",{item:t("ing_"+type)}));
       const station=nearestStation(open);
       state.scene.faceToward(station);
       removeIngredient(type,need.status);
@@ -1503,30 +1533,30 @@ function executeGameCommand(name,args){
       station.work={phase:items.length>=4?"complete":"holding",items};
       updatePlateVisual(stationId(station));
       await state.scene.waitMs(340);
-      log(items.length>=4?`Plated ${info.label.toLowerCase()}. Burger complete.`:`Plated ${info.label.toLowerCase()}.`);
+      log(items.length>=4?t("logPlatedDone",{item:t("ing_"+type)}):t("logPlated",{item:t("ing_"+type)}));
     });
   }
   if(name==="wash_plate"){
     return action(async()=>{
-      if(!nearbyStations("wash").length)fail("stand next to the washing station before wash_plate().");
-      if(stations.wash.work?.phase==="busy")fail("the washing station is already busy.");
-      if((state.dirtyPlates||0)<1)fail("there are no used plates to wash.");
+      if(!nearbyStations("wash").length)fail(t("failStandWash"));
+      if(stations.wash.work?.phase==="busy")fail(t("failWashBusy"));
+      if((state.dirtyPlates||0)<1)fail(t("failNoDirty"));
       const vacant=Object.values(stations).some(station=>station.kind==="plate"&&station.work?.phase==="vacant");
-      if(!vacant)fail("there is no free plate tile for a clean plate. Collect a finished burger first.");
+      if(!vacant)fail(t("failNoVacantPlate"));
       const station=stations.wash;
       state.scene.faceToward(station);
       state.dirtyPlates-=1;
       station.work={phase:"busy"};
-      log("Started washing a plate.");
+      log(t("logWashStart"));
       state.scene.runWashJob();
     });
   }
   if(name==="serve"){
     return action(async()=>{
-      if(!nearbyStations("serve").length)fail("stand next to the serve counter at (10, 1) or (10, 2) before serve().");
+      if(!nearbyStations("serve").length)fail(t("failStandServe"));
       const burger=state.backpack.find(item=>item&&item.type==="burger"&&item.status==="plated");
-      if(!burger)fail("serve() needs a plated burger in the backpack. plate() four items, then collect().");
-      if((state.dirtyPlates||0)>=4)fail("the washing station is full of used plates. wash_plate() first.");
+      if(!burger)fail(t("failNeedBurger"));
+      if((state.dirtyPlates||0)>=4)fail(t("failWashFull"));
       const counter=nearestStation(nearbyStations("serve"));
       state.scene.faceToward(counter);
       removeIngredient("burger","plated");
@@ -1551,18 +1581,18 @@ function executeGameCommand(name,args){
       state.dirtyPlates+=1;
       updateWashVisual();
       completeOrder();
-      state.scene.showItemEffect("Served a burger!","");
-      log(`Served a plated burger. +${SCORE_PER_ORDER} score.`);
-      log(`Orders done: ${state.ordersCompleted}. Score: ${state.score}.`);
+      state.scene.showItemEffect(t("fxServed"),"");
+      log(t("logServed",{score:SCORE_PER_ORDER}));
+      log(t("logOrders",{orders:state.ordersCompleted,score:state.score}));
     });
   }
   if(name==="move_to"){
     const c=Number(args[0]),r=Number(args[1]);
     return action(async()=>{
-      if(!Number.isInteger(c)||!Number.isInteger(r)||c<1||c>10||r<1||r>10)fail("move_to() needs coordinates from (1, 1) to (10, 10).");
+      if(!Number.isInteger(c)||!Number.isInteger(r)||c<1||c>10||r<1||r>10)fail(t("failMoveArgs"));
       const p=gridToPixel(c,r);
       await state.scene.movePlayerTo(p.x,p.y);
-      log(`Moved to (${c}, ${r}).`);
+      log(t("logMoved",{c,r}));
     });
   }
   if(name==="wait")return action(async()=>{
@@ -1572,27 +1602,27 @@ function executeGameCommand(name,args){
       if(state.scriptStopped)return;
       await new Promise(r=>setTimeout(r,Math.min(80,end-Date.now())));
     }
-    log(`Waited ${seconds} second(s).`);
+    log(t("logWaited",{n:seconds}));
   });
   if(name==="status")return action(async()=>{
     const g=playerGrid();
     const backpack={};
     state.backpack.forEach((item,index)=>{
-      if(!item){backpack[index+1]="empty";return;}
-      const info=ingredientInfo[item.type];
-      backpack[index+1]=`${info.states[item.status].label} ${info.label}`;
+      if(!item){backpack[index+1]=t("empty");return;}
+      backpack[index+1]=itemPhrase(item.type,item.status);
     });
     const backpackText=Object.entries(backpack).map(([slot,value])=>`${slot}: ${value}`).join(", ");
     const order=state.currentOrder;
     const needed=order?.ingredients?.length
       ? order.ingredients.join(", ")
       : "bun, patty, lettuce, tomato";
-    log(`Player position: (${g.column}, ${g.row})`);
-    log(`Backpack: {${backpackText}}`);
-    log(`Current order: ${order?`${order.name} (Order #${order.id})`:"none"}`);
-    log(`Needed: ${needed}`);
+    const orderText=order?t("orderN",{name:t("classicBurger"),id:order.id}):t("none");
+    log(t("statusPos",{c:g.column,r:g.row}));
+    log(t("statusPack",{pack:backpackText}));
+    log(t("statusOrder",{order:orderText}));
+    log(t("statusNeed",{need:needed}));
   });
-  fail("unknown command.");
+  fail(t("failUnknown"));
 }
 
 window.execute_game_command=async(name,args)=>{
@@ -1667,8 +1697,8 @@ async def status():
 `);
     $("runBtn").disabled=false;
     if($("stopBtn"))$("stopBtn").disabled=true;
-    $("consoleOutput").textContent="Python loaded. Write commands and click Run Python.";
-  }catch(e){log("Could not load Pyodide: "+e);}
+    $("consoleOutput").textContent=t("pythonLoaded");
+  }catch(e){log(t("pythonLoadFail",{error:e}));}
 }
 async function runPython(){
   if(!state.pyodide||state.gameEnded||state.pythonRunning)return;
@@ -1687,9 +1717,9 @@ exec(__pkr_prepared, globals())
 await __pkr_main()
 `);
     await state.actionQueue;
-    if(!state.scriptStopped) log("Python execution finished.");
+    if(!state.scriptStopped) log(t("pythonFinished"));
   }catch(e){
-    if(!state.scriptStopped) log("Python error: "+(e.message||e));
+    if(!state.scriptStopped) log(t("pythonError",{error:e.message||e}));
   }finally{
     state.pythonRunning=false;
     if($("runBtn"))$("runBtn").disabled=false;
@@ -1700,7 +1730,7 @@ function stopPython(){
   if(!state.pythonRunning||state.scriptStopped)return;
   state.scriptStopped=true;
   state.scene?.hideCarry();
-  log("Stopped: Python stopped.");
+  log(t("pythonStopped"));
   if($("stopBtn"))$("stopBtn").disabled=true;
 }
 function startTimer(){const timer=setInterval(()=>{if(!state.running||state.gameEnded||state.quitPromptOpen){if(state.gameEnded)clearInterval(timer);return;}state.timeLeft--;updateHUD();if(state.timeLeft<=0)endRound(true);},1000);}
@@ -1747,16 +1777,15 @@ function saveUnfinishedRound(){
   fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body,keepalive:true}).catch(()=>null);
 }
 function showEndScreen({finished,name,served,score,timeTaken,saved}){
-  if($("resultBadge"))$("resultBadge").textContent=finished?"TIME'S UP":"LEFT EARLY";
-  if($("resultHeadline"))$("resultHeadline").textContent=finished?"Kitchen closed!":"Shift paused";
-  if($("resultPlayerName"))$("resultPlayerName").textContent=name||"Chef";
+  state.lastEndScreen={finished,name,served,score,timeTaken,saved};
+  if($("resultBadge"))$("resultBadge").textContent=finished?t("timesUp"):t("leftEarly");
+  if($("resultHeadline"))$("resultHeadline").textContent=finished?t("kitchenClosed"):t("shiftPaused");
+  if($("resultPlayerName"))$("resultPlayerName").textContent=name||t("chef");
   if($("resultServed"))$("resultServed").textContent=String(served??0);
   if($("resultTime"))$("resultTime").textContent=timeTaken||"0:00";
   if($("resultScore"))$("resultScore").textContent=String(score??0);
   if($("resultNote")){
-    $("resultNote").textContent=saved===false
-      ?"Could not save this round to the leaderboard."
-      :"Saved to the shared leaderboard.";
+    $("resultNote").textContent=saved===false?t("saveFail"):t("savedBoard");
   }
   showScreen("resultScreen");
 }
@@ -1782,9 +1811,11 @@ async function endRound(finished){
   state.scoreSaved=true;
   try{
     const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(scorePayload(!!finished))});
-    if($("resultNote"))$("resultNote").textContent=r.ok?"Saved to the shared leaderboard.":"Could not save this round to the leaderboard.";
+    if($("resultNote"))$("resultNote").textContent=r.ok?t("savedBoard"):t("saveFail");
+    if(state.lastEndScreen) state.lastEndScreen.saved=r.ok;
   }catch(_){
-    if($("resultNote"))$("resultNote").textContent="Could not save this round to the leaderboard.";
+    if($("resultNote"))$("resultNote").textContent=t("saveFail");
+    if(state.lastEndScreen) state.lastEndScreen.saved=false;
   }
 }
 function bestScoresByPlayer(rows){
@@ -1804,11 +1835,12 @@ function bestScoresByPlayer(rows){
   return Object.values(byName).sort((a,b)=>b.score-a.score||b.orders_completed-a.orders_completed);
 }
 function renderLeaderboardDashboard(rows){
+  state.leaderboardRows=rows;
   const stats=$("leaderboardStats");
   const content=$("leaderboardContent");
   if(!rows.length){
     if(stats)stats.innerHTML="";
-    if(content)content.innerHTML=`<p class="lb-empty">No player scores yet. Finish a round to appear here.</p>`;
+    if(content)content.innerHTML=`<p class="lb-empty">${t("lbEmpty")}</p>`;
     return;
   }
   const players=bestScoresByPlayer(rows);
@@ -1816,16 +1848,16 @@ function renderLeaderboardDashboard(rows){
   const totalOrders=players.reduce((sum,row)=>sum+(Number(row.orders_completed)||0),0);
   if(stats){
     stats.innerHTML=`
-      <div class="lb-stat"><span>Players</span><strong>${players.length}</strong></div>
-      <div class="lb-stat"><span>Top score</span><strong>${top.score}</strong></div>
-      <div class="lb-stat"><span>Orders served</span><strong>${totalOrders}</strong></div>
+      <div class="lb-stat"><span>${t("lbPlayers")}</span><strong>${players.length}</strong></div>
+      <div class="lb-stat"><span>${t("lbTop")}</span><strong>${top.score}</strong></div>
+      <div class="lb-stat"><span>${t("lbOrders")}</span><strong>${totalOrders}</strong></div>
     `;
   }
   if(content){
-    content.innerHTML=`<table><thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Orders</th><th>Status</th><th>Last played</th></tr></thead><tbody>`+
+    content.innerHTML=`<table><thead><tr><th>${t("lbRank")}</th><th>${t("lbPlayer")}</th><th>${t("lbScore")}</th><th>${t("lbOrdersCol")}</th><th>${t("lbStatus")}</th><th>${t("lbLast")}</th></tr></thead><tbody>`+
       players.map((row,index)=>{
         const finished=Number(row.finished)!==0;
-        return `<tr><td>${index+1}</td><td>${escapeHtml(row.player_name)}</td><td>${row.score}</td><td>${row.orders_completed}</td><td>${finished?"Finished":"Left early"}</td><td>${row.time_completed?new Date(row.time_completed).toLocaleString():"—"}</td></tr>`;
+        return `<tr><td>${index+1}</td><td>${escapeHtml(row.player_name)}</td><td>${row.score}</td><td>${row.orders_completed}</td><td>${finished?t("finished"):t("leftEarlyStatus")}</td><td>${row.time_completed?new Date(row.time_completed).toLocaleString():"—"}</td></tr>`;
       }).join("")+
       `</tbody></table>`;
   }
@@ -1836,19 +1868,64 @@ async function showLeaderboard(returnTo){
   const stats=$("leaderboardStats");
   const content=$("leaderboardContent");
   if(stats)stats.innerHTML="";
-  if(content)content.textContent="Loading leaderboard…";
+  if(content)content.textContent=t("lbLoading");
   try{
     const r=await fetch("/api/leaderboard");
     const rows=await r.json();
     renderLeaderboardDashboard(Array.isArray(rows)?rows:[]);
   }catch(_){
-    if(content)content.innerHTML=`<p class="lb-empty">Could not load leaderboard.</p>`;
+    if(content)content.innerHTML=`<p class="lb-empty">${t("lbFail")}</p>`;
   }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+function applyStaticI18n() {
+  document.documentElement.lang = uiLang === "zh" ? "zh-Hans" : "en";
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.dataset.i18nTitle); });
+}
+function applyI18n() {
+  applyStaticI18n();
+  const labels = state.scene?.stationLabels;
+  if (labels) Object.entries(labels).forEach(([id, label]) => { if (label?.setText) label.setText(stationDisplayName(id)); });
+  if (state.scene?.playerLabel?.setText) state.scene.playerLabel.setText(t("player"));
+  const tab = document.querySelector("#gameScreen .guide-tabs .tab.active")?.dataset.tab || "movement";
+  if ($("guideAction")) {
+    const [action, text, code] = getLesson(tab);
+    $("guideAction").textContent = action;
+    $("guideText").textContent = text;
+    $("guideCode").textContent = code;
+  }
+  if ($("tutorialScreen") && !$("tutorialScreen").classList.contains("hidden")) showTutorialStep();
+  if ($("backpack")) renderIngredientBackpack();
+  if (typeof updateGuideStatusBox === "function") updateGuideStatusBox();
+  if (state.lastEndScreen && $("resultScreen") && !$("resultScreen").classList.contains("hidden")) {
+    const keep = state.lastEndScreen;
+    if ($("resultBadge")) $("resultBadge").textContent = keep.finished ? t("timesUp") : t("leftEarly");
+    if ($("resultHeadline")) $("resultHeadline").textContent = keep.finished ? t("kitchenClosed") : t("shiftPaused");
+    if ($("resultPlayerName")) $("resultPlayerName").textContent = keep.name || t("chef");
+    if ($("resultNote")) $("resultNote").textContent = keep.saved === false ? t("saveFail") : t("savedBoard");
+  }
+  if (Array.isArray(state.leaderboardRows) && $("leaderboardScreen") && !$("leaderboardScreen").classList.contains("hidden")) {
+    renderLeaderboardDashboard(state.leaderboardRows);
+  }
+  const out = $("consoleOutput");
+  if (out && !state.pyodide) out.textContent = t("pythonLoading");
+  else if (out && state.pyodide && !state.pythonRunning) {
+    const idle = ["Python loaded. Write commands and click Run Python.", "Python 已就绪。编写命令，再点击 Run Python。", "Python is loading…", "正在加载 Python…"];
+    if (idle.includes(out.textContent)) out.textContent = t("pythonLoaded");
+  }
+}
+function toggleLang() {
+  uiLang = uiLang === "zh" ? "en" : "zh";
+  try { localStorage.setItem(LANG_STORAGE, uiLang); } catch (_) {}
+  applyI18n();
+}
+
 $("startBtn").addEventListener("click",()=>{
-  const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
+  const name=$("playerName").value.trim();if(!name){alert(t("needName"));return;}
   playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.quitPromptOpen=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
   startGuideDemo("movement");
   if(!state.scene){state.phaser=new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:KitchenScene});}
@@ -1863,12 +1940,14 @@ $("tutorialNextBtn")?.addEventListener("click",tutorialNext);
 $("gameBackBtn")?.addEventListener("click",askQuitGame);
 $("quitConfirmYes")?.addEventListener("click",()=>{playOptionalSound("button_click");endRound(false);});
 $("quitConfirmNo")?.addEventListener("click",cancelQuitGame);
+$("langToggle")?.addEventListener("click",()=>{playOptionalSound("button_click");toggleLang();});
 window.addEventListener("pagehide",e=>{ if(!e.persisted) saveUnfinishedRound(); });
 window.addEventListener("beforeunload",saveUnfinishedRound);
 window.addEventListener("resize",()=>{if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();});
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});
 fetch("/api/health").catch(()=>null);loadPython();
+applyI18n();
 startGuideDemo("movement");
 
 (() => {

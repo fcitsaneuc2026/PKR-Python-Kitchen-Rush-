@@ -3411,3 +3411,24 @@ html, body, .app-shell {
 @media (max-width: 640px) {
   .result-stats { grid-template-columns: 1fr; width: min(280px, 100%); }
 }
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, Helvetica, sans-serif;
+}
+
+.lang-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 120;
+  min-width: 76px;
+  margin: 0 !important;
+  padding: 8px 16px;
+  font-size: 15px;
+  animation: none !important;
+}
+
+.lang-toggle:hover,
+.lang-toggle:active {
+  animation: none !important;
+}

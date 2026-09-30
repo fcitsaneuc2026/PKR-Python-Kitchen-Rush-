@@ -4,29 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=lb8b" />
+  <link rel="stylesheet" href="/static/style.css?v=i18n1" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
 <body>
+  <button type="button" id="langToggle" class="lang-toggle primary-btn menu-play-btn" data-i18n="langBtn" data-i18n-aria="langAria">中文</button>
   <audio id="menuMusic" loop preload="auto" src="/static/sounds/main_menu_music.mp3"></audio>
   <main class="app-shell">
     <section id="mainMenu" class="main-menu screen-card">
-      <div class="menu-badge">🍔 CODE • COOK • WIN</div>
-      <h2 class="game-title"><span>PYTHON KITCHEN RUSH</span><small>Code Your Way to Victory!</small></h2>
+      <div class="menu-badge" data-i18n="menuBadge">🍔 CODE • COOK • WIN</div>
+      <h2 class="game-title"><span>PYTHON KITCHEN RUSH</span><small data-i18n="menuTagline">Code Your Way to Victory!</small></h2>
       <div class="menu-actions">
-        <button id="playMenuBtn" class="primary-btn menu-play-btn">▶ Play Game</button>
-        <button id="menuLeaderboardBtn" class="primary-btn menu-play-btn">Leaderboards</button>
-        <button id="menuTutorialBtn" class="primary-btn menu-play-btn">Tutorial</button>
+        <button id="playMenuBtn" class="primary-btn menu-play-btn" data-i18n="playGame">▶ Play Game</button>
+        <button id="menuLeaderboardBtn" class="primary-btn menu-play-btn" data-i18n="leaderboards">Leaderboards</button>
+        <button id="menuTutorialBtn" class="primary-btn menu-play-btn" data-i18n="tutorial">Tutorial</button>
       </div>
     </section>
 
     <section id="nameScreen" class="name-screen hidden">
-      <label for="playerName">Player name</label>
-      <input id="playerName" maxlength="24" placeholder="Enter your name" autocomplete="nickname" />
+      <label for="playerName" data-i18n="playerName">Player name</label>
+      <input id="playerName" maxlength="24" placeholder="Enter your name" autocomplete="nickname" data-i18n-placeholder="namePlaceholder" />
       <div class="name-actions">
-        <button id="startBtn" class="primary-btn">Start Cooking 🍳</button>
-        <button id="nameBackBtn" class="secondary-btn">Back to Main Menu</button>
+        <button id="startBtn" class="primary-btn" data-i18n="startCooking">Start Cooking 🍳</button>
+        <button id="nameBackBtn" class="secondary-btn" data-i18n="backMain">Back to Main Menu</button>
       </div>
     </section>
 
@@ -36,28 +37,28 @@
         <section class="panel pkr-game-window">
           <div class="pkr-game-header">
             <div class="pkr-game-header-left">
-              <button id="gameBackBtn" type="button" class="primary-btn menu-play-btn game-back-btn" aria-label="Back to main menu">←</button>
-              <h2>Game Window</h2>
+              <button id="gameBackBtn" type="button" class="primary-btn menu-play-btn game-back-btn" aria-label="Back to main menu" data-i18n-aria="backGameAria">←</button>
+              <h2 data-i18n="gameWindow">Game Window</h2>
             </div>
             <div class="hud">
-              <span>Time: <b id="timeValue">10:00</b></span>
-              <span>Score: <b id="scoreValue">0</b></span>
-              <span>Orders: <b id="ordersValue">0</b></span>
+              <span><span data-i18n="hudTime">Time</span>: <b id="timeValue">10:00</b></span>
+              <span><span data-i18n="hudScore">Score</span>: <b id="scoreValue">0</b></span>
+              <span><span data-i18n="hudOrders">Orders</span>: <b id="ordersValue">0</b></span>
             </div>
           </div>
 
           <div class="pkr-game-body">
             <aside class="panel status-panel player-info-panel">
               <div class="status-window-bar">
-                <h2>Status Window</h2>
+                <h2 data-i18n="statusWindow">Status Window</h2>
               </div>
               <div class="status-window-body">
                 <div class="player-info-section">
-                  <strong>Player's Coordinate</strong>
+                  <strong data-i18n="playerCoord">Player's Coordinate</strong>
                   <div id="playerCoordinate">(1, 1)</div>
                 </div>
                 <div class="player-info-section">
-                  <strong>Backpack</strong>
+                  <strong data-i18n="backpack">Backpack</strong>
                   <div id="backpack" class="backpack"></div>
                 </div>
               </div>
@@ -84,10 +85,10 @@
   </div>
   <div class="delivery-lane" aria-hidden="true"></div>
   <div class="delivery-cars" aria-label="Burger delivery cars">
-    <div class="delivery-car" data-slot="0" title="Hover to view order">
+    <div class="delivery-car" data-slot="0" title="Hover to view order" data-i18n-title="hoverOrder">
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
-        <strong>Burger</strong>
+        <strong data-i18n="burger">Burger</strong>
         <div class="completed-burger-slot" aria-hidden="true">
           <img src="/static/assets/burger/burger_complete.png" alt="">
         </div>
@@ -99,10 +100,10 @@
         </div>
       </div>
     </div>
-    <div class="delivery-car" data-slot="1" title="Hover to view order">
+    <div class="delivery-car" data-slot="1" title="Hover to view order" data-i18n-title="hoverOrder">
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
-        <strong>Burger</strong>
+        <strong data-i18n="burger">Burger</strong>
         <div class="completed-burger-slot" aria-hidden="true">
           <img src="/static/assets/burger/burger_complete.png" alt="">
         </div>
@@ -114,10 +115,10 @@
         </div>
       </div>
     </div>
-    <div class="delivery-car" data-slot="2" title="Hover to view order">
+    <div class="delivery-car" data-slot="2" title="Hover to view order" data-i18n-title="hoverOrder">
       <img class="delivery-car-sprite" src="/static/assets/car/car.png" alt="Burger delivery car">
       <div class="delivery-order-card">
-        <strong>Burger</strong>
+        <strong data-i18n="burger">Burger</strong>
         <div class="completed-burger-slot" aria-hidden="true">
           <img src="/static/assets/burger/burger_complete.png" alt="">
         </div>
@@ -145,16 +146,16 @@
         <section class="panel command-panel">
           <div class="command-curtain-bar" id="commandCurtainBar" role="button" tabindex="0"
                aria-expanded="true" aria-controls="commandCurtainBody">
-            <h2>Command Window</h2>
+            <h2 data-i18n="commandWindow">Command Window</h2>
             <span class="curtain-chevron">⌃</span>
           </div>
           <div id="commandCurtainBody" class="command-curtain-body">
-            <textarea id="codeEditor" spellcheck="false" placeholder="# Type your Python here, then click Run Python"></textarea>
+            <textarea id="codeEditor" spellcheck="false" placeholder="# Type your Python here, then click Run Python" data-i18n-placeholder="codePlaceholder"></textarea>
             <div class="editor-actions">
-              <button id="runBtn" class="primary-btn" disabled>▶ Run Python</button>
-              <button id="stopBtn" class="primary-btn stop-btn" disabled>■ Stop Python</button>
+              <button id="runBtn" class="primary-btn" disabled data-i18n="runPython">▶ Run Python</button>
+              <button id="stopBtn" class="primary-btn stop-btn" disabled data-i18n="stopPython">■ Stop Python</button>
             </div>
-            <div class="console-title">Command output</div>
+            <div class="console-title" data-i18n="commandOutput">Command output</div>
             <pre id="consoleOutput" class="console">Python is loading…</pre>
           </div>
           <div id="commandMatrix" class="command-matrix" aria-hidden="true"></div>
@@ -164,20 +165,20 @@
 
         <section class="panel guidance-panel">
           <div class="panel-heading">
-            <h2>Guide Window</h2>
+            <h2 data-i18n="guideWindow">Guide Window</h2>
           </div>
           <div class="guidance-content">
             <div class="guide-tabs tabs" role="tablist" aria-label="Command guides">
-              <button type="button" class="tab active" data-tab="movement">Move</button>
-              <button type="button" class="tab" data-tab="take">Take</button>
-              <button type="button" class="tab" data-tab="cook">Cook</button>
-              <button type="button" class="tab" data-tab="cut">Cut</button>
-              <button type="button" class="tab" data-tab="collect">Collect</button>
-              <button type="button" class="tab" data-tab="plate">Plate</button>
-              <button type="button" class="tab" data-tab="wash">Wash</button>
-              <button type="button" class="tab" data-tab="serve">Serve</button>
-              <button type="button" class="tab" data-tab="wait">Wait</button>
-              <button type="button" class="tab" data-tab="status">Status</button>
+              <button type="button" class="tab active" data-tab="movement" data-i18n="tabMove">Move</button>
+              <button type="button" class="tab" data-tab="take" data-i18n="tabTake">Take</button>
+              <button type="button" class="tab" data-tab="cook" data-i18n="tabCook">Cook</button>
+              <button type="button" class="tab" data-tab="cut" data-i18n="tabCut">Cut</button>
+              <button type="button" class="tab" data-tab="collect" data-i18n="tabCollect">Collect</button>
+              <button type="button" class="tab" data-tab="plate" data-i18n="tabPlate">Plate</button>
+              <button type="button" class="tab" data-tab="wash" data-i18n="tabWash">Wash</button>
+              <button type="button" class="tab" data-tab="serve" data-i18n="tabServe">Serve</button>
+              <button type="button" class="tab" data-tab="wait" data-i18n="tabWait">Wait</button>
+              <button type="button" class="tab" data-tab="status" data-i18n="tabStatus">Status</button>
             </div>
             <div class="visual-guide" id="visualGuide">
               <div class="guide-demo" id="guideDemo">
@@ -207,7 +208,7 @@
               <div class="guide-action" id="guideAction">Walk on the 10 × 10 grid</div>
             </div>
             <div class="command-guide">
-              <h3>Command Guidance</h3>
+              <h3 data-i18n="commandGuidance">Command Guidance</h3>
               <p id="guideText">Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.</p>
               <pre id="guideCode">move_to(3, 9)</pre>
             </div>
@@ -225,34 +226,34 @@
       </h2>
       <div class="result-stats">
         <div class="result-stat">
-          <span>Served</span>
+          <span data-i18n="served">Served</span>
           <strong id="resultServed">0</strong>
         </div>
         <div class="result-stat">
-          <span>Time taken</span>
+          <span data-i18n="timeTaken">Time taken</span>
           <strong id="resultTime">0:00</strong>
         </div>
         <div class="result-stat">
-          <span>Score</span>
+          <span data-i18n="score">Score</span>
           <strong id="resultScore">0</strong>
         </div>
       </div>
       <p class="result-note" id="resultNote"></p>
       <div class="menu-actions">
-        <button id="leaderboardBtn" class="primary-btn menu-play-btn">Leaderboards</button>
-        <button id="restartBtn" class="primary-btn menu-play-btn">Main menu</button>
+        <button id="leaderboardBtn" class="primary-btn menu-play-btn" data-i18n="leaderboards">Leaderboards</button>
+        <button id="restartBtn" class="primary-btn menu-play-btn" data-i18n="mainMenu">Main menu</button>
       </div>
     </section>
 
     <div id="quitConfirm" class="quit-confirm hidden" hidden>
-      <div class="menu-badge">Stop cooking?</div>
+      <div class="menu-badge" data-i18n="stopCooking">Stop cooking?</div>
       <h2 class="game-title">
-        <span>Leave the kitchen?</span>
-        <small>This round will be saved as left early.</small>
+        <span data-i18n="leaveKitchen">Leave the kitchen?</span>
+        <small data-i18n="leaveHint">This round will be saved as left early.</small>
       </h2>
       <div class="menu-actions">
-        <button id="quitConfirmYes" type="button" class="primary-btn menu-play-btn">Yes, stop game</button>
-        <button id="quitConfirmNo" type="button" class="primary-btn menu-play-btn">Keep playing</button>
+        <button id="quitConfirmYes" type="button" class="primary-btn menu-play-btn" data-i18n="yesStop">Yes, stop game</button>
+        <button id="quitConfirmNo" type="button" class="primary-btn menu-play-btn" data-i18n="keepPlaying">Keep playing</button>
       </div>
     </div>
 
@@ -260,10 +261,10 @@
       <div class="lb-dash-card">
         <div class="lb-dash-header">
           <div>
-            <p class="lb-kicker">Kitchen Rush</p>
-            <h2>Leaderboards</h2>
+            <p class="lb-kicker" data-i18n="lbKicker">Kitchen Rush</p>
+            <h2 data-i18n="leaderboards">Leaderboards</h2>
           </div>
-          <button id="backBtn" class="primary-btn menu-play-btn lb-back-btn">Back</button>
+          <button id="backBtn" class="primary-btn menu-play-btn lb-back-btn" data-i18n="back">Back</button>
         </div>
         <div class="lb-stats" id="leaderboardStats"></div>
         <div class="lb-table-wrap" id="leaderboardContent">Loading leaderboard…</div>
@@ -304,11 +305,12 @@
             <pre id="tutorialCode"></pre>
           </div>
         </div>
-        <button id="tutorialNextBtn" type="button" class="primary-btn menu-play-btn tutorial-next-btn" aria-label="Next step">→</button>
+        <button id="tutorialNextBtn" type="button" class="primary-btn menu-play-btn tutorial-next-btn" aria-label="Next step" data-i18n-aria="tutorialNextAria">→</button>
       </div>
     </section>
   </main>
 
-  <script src="/static/game.js?v=snd2"></script>
+  <script src="/static/i18n.js?v=i18n1"></script>
+  <script src="/static/game.js?v=i18n1"></script>
 </body>
 </html>
