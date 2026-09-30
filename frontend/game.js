@@ -6,7 +6,7 @@ const state = {
   running: false, pyodide: null, scene: null, player: null,
   backpack: [null, null, null, null], currentOrder: null, orderNumber: 1,
   items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false,
-  dirtyPlates: 0
+  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false
 };
 
 // ============================================================
@@ -295,59 +295,63 @@ function renderIngredientBackpack() {
 function newOrder() {
   state.currentOrder = { ...recipes.burger, id: state.orderNumber++ };
 }
+const GUIDE_LESSONS = {
+  movement: [
+    "Walk on the 10 × 10 grid",
+    "Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.",
+    "move_to(3, 9)"
+  ],
+  take: [
+    "Take from a chest",
+    "Stand on any empty tile next to Lettuce (1, 10), Tomato (2, 10), Bun (3, 10), or Patty (4, 10). For the bun chest, (3, 9) is the tile below it. Needs a free backpack slot.",
+    'move_to(3, 9)\ntake("bun")'
+  ],
+  cook: [
+    "Start cooking",
+    "Stand on any empty tile next to a free Cooking Pan at (4, 4), (4, 5), or (4, 6): left, right, above, or below. Example for the pan at (4, 4): (5, 4), (3, 4), (4, 3), or (4, 5) if that tile is empty. You can walk away while it cooks.",
+    'move_to(5, 4)\ncook("bun")'
+  ],
+  cut: [
+    "Start cutting",
+    "Stand on any empty tile next to a free Cutting Board at (7, 4), (7, 5), or (7, 6): left, right, above, or below. Example for the board at (7, 4): (8, 4), (6, 4), (7, 3), or (7, 5) if that tile is empty.",
+    'move_to(8, 4)\ncut("lettuce")'
+  ],
+  collect: [
+    "Pick up finished food",
+    "Stand next to a finished pan, cutting board, or a complete plated burger at (7, 10) to (10, 10), then collect(). You need a free backpack slot.",
+    "move_to(7, 9)\ncollect()"
+  ],
+  plate: [
+    "Build a burger on a plate",
+    "Stand next to a plate at (7, 10), (8, 10), (9, 10), or (10, 10). plate() needs a prepared item: cooked bun, cooked patty, chopped lettuce, or sliced tomato. Four items make a complete burger.",
+    'move_to(7, 9)\nplate("bun")'
+  ],
+  wash: [
+    "Wash used plates",
+    "After you serve, used plates wait at the Washing Station (6, 10). Stand next to it and wash_plate(). The sink counts down, then a clean empty plate appears on a free plate tile.",
+    "move_to(6, 9)\nwash_plate()"
+  ],
+  serve: [
+    "Serve a plated burger",
+    "Stand next to the Serve Counter at (10, 1) or (10, 2) with a plated burger in the backpack, then serve(). The used plate goes to the washing station.",
+    "move_to(9, 1)\nserve()"
+  ],
+  wait: [
+    "Pause the script",
+    "Optional wait, for example while a station finishes, before collect().",
+    "wait(1)"
+  ],
+  status: [
+    "Check your state",
+    "Shows your position, backpack contents, current order, and needed materials in plain text.",
+    "status()"
+  ]
+};
+const TUTORIAL_STEPS = ["movement", "take", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
+let tutorialIndex = 0;
+
 function setGuide(tab) {
-  const guides = {
-    movement: [
-      "Walk on the 10 × 10 grid",
-      "Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.",
-      "move_to(3, 9)"
-    ],
-    take: [
-      "Take from a chest",
-      "Stand on any empty tile next to Lettuce (1, 10), Tomato (2, 10), Bun (3, 10), or Patty (4, 10). For the bun chest, (3, 9) is the tile below it. Needs a free backpack slot.",
-      'move_to(3, 9)\ntake("bun")'
-    ],
-    cook: [
-      "Start cooking",
-      "Stand on any empty tile next to a free Cooking Pan at (4, 4), (4, 5), or (4, 6): left, right, above, or below. Example for the pan at (4, 4): (5, 4), (3, 4), (4, 3), or (4, 5) if that tile is empty. You can walk away while it cooks.",
-      'move_to(5, 4)\ncook("bun")'
-    ],
-    cut: [
-      "Start cutting",
-      "Stand on any empty tile next to a free Cutting Board at (7, 4), (7, 5), or (7, 6): left, right, above, or below. Example for the board at (7, 4): (8, 4), (6, 4), (7, 3), or (7, 5) if that tile is empty.",
-      'move_to(8, 4)\ncut("lettuce")'
-    ],
-    collect: [
-      "Pick up finished food",
-      "Stand next to a finished pan, cutting board, or a complete plated burger at (7, 10) to (10, 10), then collect(). You need a free backpack slot.",
-      "move_to(7, 9)\ncollect()"
-    ],
-    plate: [
-      "Build a burger on a plate",
-      "Stand next to a plate at (7, 10), (8, 10), (9, 10), or (10, 10). plate() needs a prepared item: cooked bun, cooked patty, chopped lettuce, or sliced tomato. Four items make a complete burger.",
-      'move_to(7, 9)\nplate("bun")'
-    ],
-    wash: [
-      "Wash used plates",
-      "After you serve, used plates wait at the Washing Station (6, 10). Stand next to it and wash_plate(). The sink counts down, then a clean empty plate appears on a free plate tile.",
-      "move_to(6, 9)\nwash_plate()"
-    ],
-    serve: [
-      "Serve a plated burger",
-      "Stand next to the Serve Counter at (10, 1) or (10, 2) with a plated burger in the backpack, then serve(). The used plate goes to the washing station.",
-      "move_to(9, 1)\nserve()"
-    ],
-    wait: [
-      "Pause the script",
-      "Optional wait, for example while a station finishes, before collect().",
-      "wait(1)"
-    ],
-    status: [
-      "Check your state",
-      "Shows your position, backpack contents, current order, and needed materials in plain text.",
-      "status()"
-    ]
-  };
+  const guides = GUIDE_LESSONS;
   const guide = guides[tab] || guides.movement;
   const [action, text, code] = guide;
   const activeTab = guides[tab] ? tab : "movement";
@@ -395,7 +399,32 @@ function syncGuideDemo(tab) {
   }
 }
 
-const guideDemo = { timers: [], generation: 0, player: null, item: null, cells: {}, stationImgs: {} };
+const GUIDE_HOSTS = {
+  game: {
+    demo: "guideDemo", board: "guideMiniBoard", wrap: "guideMiniWrap", miniX: "guideMiniX",
+    waitStage: "guideWaitStage", clockHand: "guideClockHand", clockLabel: "guideClockLabel",
+    statusBox: "guideStatusBox", code: "guideCode"
+  },
+  tutorial: {
+    demo: "tutorialDemo", board: "tutorialMiniBoard", wrap: "tutorialMiniWrap", miniX: "tutorialMiniX",
+    waitStage: "tutorialWaitStage", clockHand: "tutorialClockHand", clockLabel: "tutorialClockLabel",
+    statusBox: "tutorialStatusBox", code: "tutorialCode"
+  }
+};
+const guideDemoPool = {
+  game: { timers: [], generation: 0, player: null, item: null, cells: {}, stationImgs: {} },
+  tutorial: { timers: [], generation: 0, player: null, item: null, cells: {}, stationImgs: {} }
+};
+let activeGuideHost = "game";
+let guideDemo = guideDemoPool.game;
+function ge(name) {
+  return $(GUIDE_HOSTS[activeGuideHost][name]);
+}
+function useGuideHost(name) {
+  stopGuideDemo();
+  activeGuideHost = GUIDE_HOSTS[name] ? name : "game";
+  guideDemo = guideDemoPool[activeGuideHost];
+}
 
 const GUIDE_HIGHLIGHTS = {
   movement: [{ column: 3, row: 9 }],
@@ -411,7 +440,7 @@ const GUIDE_HIGHLIGHTS = {
 };
 
 function buildGuideDemo() {
-  const board = $("guideMiniBoard");
+  const board = ge("board");
   if (!board || board.dataset.ready) return;
   board.dataset.ready = "1";
   guideDemo.cells = {};
@@ -498,11 +527,11 @@ function resetGuideStations() {
 }
 
 function setGuideLayout(tab) {
-  const demo = $("guideDemo");
-  const waitStage = $("guideWaitStage");
-  const statusBox = $("guideStatusBox");
-  const miniWrap = $("guideMiniWrap");
-  const miniX = $("guideMiniX");
+  const demo = ge("demo");
+  const waitStage = ge("waitStage");
+  const statusBox = ge("statusBox");
+  const miniWrap = ge("wrap");
+  const miniX = ge("miniX");
   if (demo) {
     demo.classList.toggle("is-wait", tab === "wait");
     demo.classList.toggle("is-status", tab === "status");
@@ -514,14 +543,14 @@ function setGuideLayout(tab) {
 }
 
 function guideWaitSeconds() {
-  const code = $("guideCode")?.textContent || "wait(1)";
+  const code = ge("code")?.textContent || "wait(1)";
   const match = code.match(/wait\(\s*(\d+(?:\.\d+)?)\s*\)/);
   const seconds = match ? Number(match[1]) : 1;
   return Math.max(1, Math.min(10, Math.round(seconds) || 1));
 }
 
 function setGuideClockHand(degrees, animate) {
-  const hand = $("guideClockHand");
+  const hand = ge("clockHand");
   if (!hand) return;
   hand.style.transition = animate ? "transform 1s linear" : "none";
   hand.style.transform = `rotate(${degrees}deg)`;
@@ -529,7 +558,7 @@ function setGuideClockHand(degrees, animate) {
 
 async function playGuideWaitClock(alive) {
   const seconds = guideWaitSeconds();
-  const label = $("guideClockLabel");
+  const label = ge("clockLabel");
   setGuideClockHand(0, false);
   if (label) label.textContent = "1";
   await waitGuide(40);
@@ -537,7 +566,7 @@ async function playGuideWaitClock(alive) {
     if (!alive()) return;
     if (label) label.textContent = String(beat);
     setGuideClockHand(0, false);
-    void $("guideClockHand")?.offsetWidth;
+    void ge("clockHand")?.offsetWidth;
     setGuideClockHand(360, true);
     await waitGuide(1000);
   }
@@ -570,7 +599,7 @@ function formatGuideStatusText() {
 }
 
 function updateGuideStatusBox(position) {
-  const box = $("guideStatusBox");
+  const box = ge("statusBox");
   if (box) box.textContent = formatGuideStatusText();
   if (position) {
     GUIDE_HIGHLIGHTS.status = [position];
@@ -781,10 +810,43 @@ function startGuideDemo(tab) {
   })();
 }
 
+function showTutorialStep() {
+  const tab = TUTORIAL_STEPS[tutorialIndex] || "movement";
+  const lesson = GUIDE_LESSONS[tab] || GUIDE_LESSONS.movement;
+  const [action, text, code] = lesson;
+  if ($("tutorialStepLabel")) $("tutorialStepLabel").textContent = `Step ${tutorialIndex + 1} of ${TUTORIAL_STEPS.length}`;
+  if ($("tutorialTitle")) $("tutorialTitle").textContent = action;
+  if ($("tutorialText")) $("tutorialText").textContent = text;
+  if ($("tutorialCode")) $("tutorialCode").textContent = code;
+  const last = tutorialIndex >= TUTORIAL_STEPS.length - 1;
+  if ($("tutorialNextBtn")) $("tutorialNextBtn").textContent = last ? "Done" : "→";
+  startGuideDemo(tab);
+}
+
+function openTutorial() {
+  tutorialIndex = 0;
+  useGuideHost("tutorial");
+  showScreen("tutorialScreen");
+  showTutorialStep();
+}
+
+function tutorialNext() {
+  playOptionalSound("button_click");
+  if (tutorialIndex >= TUTORIAL_STEPS.length - 1) {
+    stopGuideDemo();
+    useGuideHost("game");
+    showScreen("mainMenu");
+    return;
+  }
+  tutorialIndex += 1;
+  showTutorialStep();
+}
+
 function showScreen(id) {
-  ["mainMenu", "nameScreen", "gameScreen", "resultScreen", "leaderboardScreen"].forEach(screenId => {
+  ["mainMenu", "nameScreen", "gameScreen", "resultScreen", "leaderboardScreen", "tutorialScreen"].forEach(screenId => {
     const el = $(screenId); if (el) el.classList.toggle("hidden", screenId !== id);
   });
+  window.scrollTo(0, 0);
 }
 function startMenuMusic() { const music=$("menuMusic"); if (!music)return; music.volume=.35; music.play().catch(()=>{}); }
 function unlockMenuAudio(){ startMenuMusic(); }
@@ -797,6 +859,8 @@ function playOptionalSound(name) {
 }
 
 $("playMenuBtn").addEventListener("click",()=>{playOptionalSound("button_click");showScreen("nameScreen");$("playerName").focus();});
+$("menuLeaderboardBtn")?.addEventListener("click",()=>{playOptionalSound("button_click");showLeaderboard("mainMenu");});
+$("menuTutorialBtn")?.addEventListener("click",()=>{playOptionalSound("button_click");openTutorial();});
 $("nameBackBtn").addEventListener("click",()=>{playOptionalSound("button_click");showScreen("mainMenu");});
 $("startBtn").addEventListener("click",()=>playOptionalSound("button_click"));
 
@@ -1588,22 +1652,117 @@ function stopPython(){
   if($("stopBtn"))$("stopBtn").disabled=true;
 }
 function startTimer(){const timer=setInterval(()=>{if(!state.running||state.gameEnded){clearInterval(timer);return;}state.timeLeft--;updateHUD();if(state.timeLeft<=0)finishGame();},1000);}
-async function finishGame(){if(state.gameEnded)return;state.gameEnded=true;state.running=false;state.finishedAt=new Date();showScreen("resultScreen");$("resultSummary").innerHTML=`<p><b>${escapeHtml(state.playerName)}</b>, your time is up.</p><p>Score: <b>${state.score}</b></p><p>Orders completed: <b>${state.ordersCompleted}</b></p>`;try{const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:state.playerName,score:state.score,game_mode:"Solo Burger Rush",time_completed:new Date().toISOString(),orders_completed:state.ordersCompleted})});if(!r.ok)throw new Error();$("resultSummary").innerHTML+=`<p class="small-note">Score saved to the shared leaderboard.</p>`;}catch(_){$("resultSummary").innerHTML+=`<p class="small-note">Could not save score. Check the server connection.</p>`;}}
-async function showLeaderboard(){showScreen("leaderboardScreen");try{const r=await fetch("/api/leaderboard"),rows=await r.json();if(!rows.length){$("leaderboardContent").textContent="No scores yet.";return;}$("leaderboardContent").innerHTML=`<table><thead><tr><th>Rank</th><th>Name</th><th>Score</th><th>Mode</th><th>Completed</th><th>Orders</th></tr></thead><tbody>`+rows.map((x,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(x.player_name)}</td><td>${x.score}</td><td>${escapeHtml(x.game_mode)}</td><td>${new Date(x.time_completed).toLocaleString()}</td><td>${x.orders_completed}</td></tr>`).join("")+`</tbody></table>`;}catch(_){$("leaderboardContent").textContent="Could not load leaderboard.";}}
+function scorePayload(finished){
+  return {
+    player_name:state.playerName,
+    score:state.score,
+    game_mode:finished?"Solo Burger Rush":"Unfinished Burger Rush",
+    time_completed:new Date().toISOString(),
+    orders_completed:state.ordersCompleted,
+    finished
+  };
+}
+function saveUnfinishedRound(){
+  if(state.scoreSaved||state.gameEnded||!state.running||!String(state.playerName||"").trim())return;
+  state.scoreSaved=true;
+  const body=JSON.stringify(scorePayload(false));
+  try{
+    const blob=new Blob([body],{type:"application/json"});
+    if(navigator.sendBeacon("/api/scores",blob))return;
+  }catch(_){}
+  fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body,keepalive:true}).catch(()=>null);
+}
+async function finishGame(){
+  if(state.gameEnded)return;
+  state.gameEnded=true;
+  state.running=false;
+  state.finishedAt=new Date();
+  showScreen("resultScreen");
+  $("resultSummary").innerHTML=`<p><b>${escapeHtml(state.playerName)}</b>, your time is up.</p><p>Score: <b>${state.score}</b></p><p>Orders completed: <b>${state.ordersCompleted}</b></p>`;
+  try{
+    state.scoreSaved=true;
+    const r=await fetch("/api/scores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(scorePayload(true))});
+    if(!r.ok)throw new Error();
+    $("resultSummary").innerHTML+=`<p class="small-note">Score saved to the shared leaderboard.</p>`;
+  }catch(_){
+    $("resultSummary").innerHTML+=`<p class="small-note">Could not save score. Check the server connection.</p>`;
+  }
+}
+function bestScoresByPlayer(rows){
+  const byName={};
+  rows.forEach(row=>{
+    const key=String(row.player_name||"").trim();
+    if(!key)return;
+    const current=byName[key];
+    const nextFinished=Number(row.finished)!==0;
+    const currentFinished=current?Number(current.finished)!==0:false;
+    const better=!current
+      || row.score>current.score
+      || (row.score===current.score && nextFinished && !currentFinished)
+      || (row.score===current.score && nextFinished===currentFinished && row.orders_completed>current.orders_completed);
+    if(better) byName[key]=row;
+  });
+  return Object.values(byName).sort((a,b)=>b.score-a.score||b.orders_completed-a.orders_completed);
+}
+function renderLeaderboardDashboard(rows){
+  const stats=$("leaderboardStats");
+  const content=$("leaderboardContent");
+  if(!rows.length){
+    if(stats)stats.innerHTML="";
+    if(content)content.innerHTML=`<p class="lb-empty">No player scores yet. Finish a round to appear here.</p>`;
+    return;
+  }
+  const players=bestScoresByPlayer(rows);
+  const top=players[0];
+  const totalOrders=players.reduce((sum,row)=>sum+(Number(row.orders_completed)||0),0);
+  if(stats){
+    stats.innerHTML=`
+      <div class="lb-stat"><span>Players</span><strong>${players.length}</strong></div>
+      <div class="lb-stat"><span>Top score</span><strong>${top.score}</strong></div>
+      <div class="lb-stat"><span>Orders served</span><strong>${totalOrders}</strong></div>
+    `;
+  }
+  if(content){
+    content.innerHTML=`<table><thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Orders</th><th>Status</th><th>Last played</th></tr></thead><tbody>`+
+      players.map((row,index)=>{
+        const finished=Number(row.finished)!==0;
+        return `<tr><td>${index+1}</td><td>${escapeHtml(row.player_name)}</td><td>${row.score}</td><td>${row.orders_completed}</td><td>${finished?"Finished":"Left early"}</td><td>${row.time_completed?new Date(row.time_completed).toLocaleString():"—"}</td></tr>`;
+      }).join("")+
+      `</tbody></table>`;
+  }
+}
+async function showLeaderboard(returnTo){
+  state.leaderboardReturn=returnTo||"resultScreen";
+  showScreen("leaderboardScreen");
+  const stats=$("leaderboardStats");
+  const content=$("leaderboardContent");
+  if(stats)stats.innerHTML="";
+  if(content)content.textContent="Loading leaderboard…";
+  try{
+    const r=await fetch("/api/leaderboard");
+    const rows=await r.json();
+    renderLeaderboardDashboard(Array.isArray(rows)?rows:[]);
+  }catch(_){
+    if(content)content.innerHTML=`<p class="lb-empty">Could not load leaderboard.</p>`;
+  }
+}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert("Please enter a player name.");return;}
-  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.actionQueue=Promise.resolve();resetStationWork();showScreen("gameScreen");
+  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
   startGuideDemo("movement");
   if(!state.scene){state.phaser=new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
 });
 $("runBtn").addEventListener("click",runPython);
 if($("stopBtn"))$("stopBtn").addEventListener("click",stopPython);
-$("leaderboardBtn").addEventListener("click",showLeaderboard);
-$("backBtn").addEventListener("click",()=>showScreen("resultScreen"));
+$("leaderboardBtn").addEventListener("click",()=>showLeaderboard("resultScreen"));
+$("backBtn").addEventListener("click",()=>showScreen(state.leaderboardReturn||"mainMenu"));
 $("restartBtn").addEventListener("click",()=>location.reload());
+$("tutorialNextBtn")?.addEventListener("click",tutorialNext);
+window.addEventListener("pagehide",e=>{ if(!e.persisted) saveUnfinishedRound(); });
+window.addEventListener("beforeunload",saveUnfinishedRound);
 window.addEventListener("resize",()=>{if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();});
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});

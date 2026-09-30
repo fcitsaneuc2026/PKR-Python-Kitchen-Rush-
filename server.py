@@ -17,6 +17,7 @@ class ScoreSubmission(BaseModel):
     game_mode: str = Field(min_length=1, max_length=50)
     time_completed: str
     orders_completed: int = Field(ge=0, le=10000)
+    finished: bool = True
 
 def db():
     connection = sqlite3.connect(DB_PATH)
@@ -32,9 +33,13 @@ def init_db():
             score INTEGER NOT NULL,
             game_mode TEXT NOT NULL,
             time_completed TEXT NOT NULL,
-            orders_completed INTEGER NOT NULL
+            orders_completed INTEGER NOT NULL,
+            finished INTEGER NOT NULL DEFAULT 1
         )
         """)
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(scores)").fetchall()]
+        if "finished" not in columns:
+            conn.execute("ALTER TABLE scores ADD COLUMN finished INTEGER NOT NULL DEFAULT 1")
         conn.commit()
 
 @app.on_event("startup")
@@ -51,14 +56,15 @@ def submit_score(submission: ScoreSubmission):
     # server-side replay verification, rate limits, and stronger anti-cheat.
     with db() as conn:
         conn.execute("""
-            INSERT INTO scores (player_name, score, game_mode, time_completed, orders_completed)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO scores (player_name, score, game_mode, time_completed, orders_completed, finished)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             submission.player_name.strip(),
             submission.score,
             submission.game_mode,
             submission.time_completed,
             submission.orders_completed,
+            1 if submission.finished else 0,
         ))
         conn.commit()
     return {"saved": True}
@@ -67,7 +73,8 @@ def submit_score(submission: ScoreSubmission):
 def leaderboard():
     with db() as conn:
         rows = conn.execute("""
-            SELECT player_name, score, game_mode, time_completed, orders_completed
+            SELECT player_name, score, game_mode, time_completed, orders_completed,
+                   COALESCE(finished, 1) AS finished
             FROM scores
             ORDER BY score DESC, orders_completed DESC, time_completed ASC
             LIMIT 100

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=stoppy" />
+  <link rel="stylesheet" href="/static/style.css?v=tutunfin" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -14,7 +14,11 @@
     <section id="mainMenu" class="main-menu screen-card">
       <div class="menu-badge">🍔 CODE • COOK • WIN</div>
       <h2 class="game-title"><span>PYTHON KITCHEN RUSH</span><small>Code Your Way to Victory!</small></h2>
-      <button id="playMenuBtn" class="primary-btn menu-play-btn">▶ Play Game</button>
+      <div class="menu-actions">
+        <button id="playMenuBtn" class="primary-btn menu-play-btn">▶ Play Game</button>
+        <button id="menuLeaderboardBtn" class="primary-btn menu-play-btn">Leaderboards</button>
+        <button id="menuTutorialBtn" class="primary-btn menu-play-btn">Tutorial</button>
+      </div>
     </section>
 
     <section id="nameScreen" class="name-screen hidden">
@@ -217,15 +221,59 @@
       <button id="restartBtn" class="secondary-btn">Play again</button>
     </section>
 
-    <section id="leaderboardScreen" class="screen-card hidden">
-      <div class="leaderboard-heading">
-        <h2>Shared leaderboard</h2>
-        <button id="backBtn" class="secondary-btn">Back</button>
+    <section id="leaderboardScreen" class="leaderboard-dash hidden">
+      <div class="lb-dash-card">
+        <div class="lb-dash-header">
+          <div>
+            <p class="lb-kicker">Kitchen Rush</p>
+            <h2>Leaderboards</h2>
+          </div>
+          <button id="backBtn" class="primary-btn menu-play-btn lb-back-btn">Back</button>
+        </div>
+        <div class="lb-stats" id="leaderboardStats"></div>
+        <div class="lb-table-wrap" id="leaderboardContent">Loading leaderboard…</div>
       </div>
-      <div id="leaderboardContent">Loading leaderboard…</div>
+    </section>
+    <section id="tutorialScreen" class="tutorial-screen hidden">
+      <div class="tutorial-layout">
+        <div class="tutorial-main">
+          <div class="tutorial-square">
+            <div class="guide-demo" id="tutorialDemo">
+              <div class="guide-mini-wrap" id="tutorialMiniWrap">
+                <div class="guide-mini-y" aria-hidden="true">
+                  <span>10</span><span>9</span><span>8</span><span>7</span><span>6</span>
+                  <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+                </div>
+                <div class="guide-mini-board" id="tutorialMiniBoard"></div>
+              </div>
+              <div class="guide-mini-x" id="tutorialMiniX" aria-hidden="true">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+              </div>
+              <div class="guide-wait-stage" id="tutorialWaitStage" hidden>
+                <img class="guide-wait-player" src="/static/assets/player/player_down.png" alt="Player waiting">
+                <div class="guide-clock" aria-hidden="true">
+                  <div class="guide-clock-face">
+                    <div class="guide-clock-hand" id="tutorialClockHand"></div>
+                  </div>
+                  <div class="guide-clock-label" id="tutorialClockLabel">1</div>
+                </div>
+              </div>
+              <pre class="guide-status-box" id="tutorialStatusBox" hidden></pre>
+            </div>
+          </div>
+          <div class="tutorial-script">
+            <p class="tutorial-step-label" id="tutorialStepLabel">Step 1 of 10</p>
+            <h3 id="tutorialTitle">Walk on the 10 × 10 grid</h3>
+            <p id="tutorialText"></p>
+            <pre id="tutorialCode"></pre>
+          </div>
+        </div>
+        <button id="tutorialNextBtn" type="button" class="primary-btn menu-play-btn tutorial-next-btn" aria-label="Next step">→</button>
+      </div>
     </section>
   </main>
 
-  <script src="/static/game.js?v=stoppy"></script>
+  <script src="/static/game.js?v=tutunfin"></script>
 </body>
 </html>
