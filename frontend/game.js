@@ -910,11 +910,20 @@ function playTypingSound(){
   }
   stopAudioEl(typingClip);
   activeSfx = typingClip;
-  typingClip.play().catch(()=>{
-    try{typingAudioContext ||= new (window.AudioContext||window.webkitAudioContext)();
-      const o=typingAudioContext.createOscillator(),g=typingAudioContext.createGain();o.type="square";o.frequency.value=620;
-      g.gain.setValueAtTime(.035,typingAudioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,typingAudioContext.currentTime+.035);
-      o.connect(g);g.connect(typingAudioContext.destination);o.start();o.stop(typingAudioContext.currentTime+.035);}catch(_){}}
+  typingClip.play().catch(() => {
+    try {
+      typingAudioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+      const o = typingAudioContext.createOscillator();
+      const g = typingAudioContext.createGain();
+      o.type = "square";
+      o.frequency.value = 620;
+      g.gain.setValueAtTime(.035, typingAudioContext.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, typingAudioContext.currentTime + .035);
+      o.connect(g);
+      g.connect(typingAudioContext.destination);
+      o.start();
+      o.stop(typingAudioContext.currentTime + .035);
+    } catch (_) {}
   });
 }
 $("codeEditor")?.addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const k=["Backspace","Delete","Enter","Tab","Space"];if(e.key.length===1||k.includes(e.key))playTypingSound();});
