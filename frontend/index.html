@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=i18n1" />
+  <link rel="stylesheet" href="/static/style.css?v=nocurtain1" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -144,12 +144,10 @@
             </div>
 
         <section class="panel command-panel">
-          <div class="command-curtain-bar" id="commandCurtainBar" role="button" tabindex="0"
-               aria-expanded="true" aria-controls="commandCurtainBody">
+          <div class="command-curtain-bar">
             <h2 data-i18n="commandWindow">Command Window</h2>
-            <span class="curtain-chevron">⌃</span>
           </div>
-          <div id="commandCurtainBody" class="command-curtain-body">
+          <div class="command-curtain-body">
             <textarea id="codeEditor" spellcheck="false" placeholder="# Type your Python here, then click Run Python" data-i18n-placeholder="codePlaceholder"></textarea>
             <div class="editor-actions">
               <button id="runBtn" class="primary-btn" disabled data-i18n="runPython">▶ Run Python</button>
@@ -158,7 +156,6 @@
             <div class="console-title" data-i18n="commandOutput">Command output</div>
             <pre id="consoleOutput" class="console">Python is loading…</pre>
           </div>
-          <div id="commandMatrix" class="command-matrix" aria-hidden="true"></div>
         </section>
           </div>
         </section>
@@ -311,6 +308,6 @@
   </main>
 
   <script src="/static/i18n.js?v=i18n1"></script>
-  <script src="/static/game.js?v=i18n1"></script>
+  <script src="/static/game.js?v=nocurtain1"></script>
 </body>
 </html>

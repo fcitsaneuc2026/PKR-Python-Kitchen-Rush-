@@ -726,7 +726,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  cursor: pointer;
+  cursor: default;
   user-select: none;
   color: #d1fae5;
   background: #111827;
@@ -1360,13 +1360,9 @@ html, body {
   position: relative;
 }
 
-#gameScreen .command-curtain-bar.is-collapsed .curtain-chevron {
-  transform: rotate(180deg);
-}
-
-#gameScreen .curtain-chevron {
-  display: inline-block;
-  transition: transform .4s cubic-bezier(.22, 1, .36, 1);
+#gameScreen .curtain-chevron,
+#gameScreen .command-matrix {
+  display: none !important;
 }
 
 #gameScreen .command-matrix {
