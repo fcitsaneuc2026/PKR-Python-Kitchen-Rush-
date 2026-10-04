@@ -1914,7 +1914,7 @@ function applyI18n() {
   const out = $("consoleOutput");
   if (out && !state.pyodide) out.textContent = t("pythonLoading");
   else if (out && state.pyodide && !state.pythonRunning) {
-    const idle = ["Python loaded. Write commands and click Run Python.", "Python 已就绪。编写命令，再点击 Run Python。", "Python is loading…", "正在加载 Python…"];
+    const idle = ["Python loaded. Write commands and press F5.", "Python 已就绪。编写命令，再按 F5。", "Python is loading…", "正在加载 Python…"];
     if (idle.includes(out.textContent)) out.textContent = t("pythonLoaded");
   }
 }
@@ -1932,6 +1932,15 @@ $("startBtn").addEventListener("click",()=>{
   newOrder();updateHUD();startTimer();
 });
 $("runBtn").addEventListener("click",runPython);
+window.addEventListener("keydown", event => {
+  if (event.key !== "F5") return;
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+  const game = $("gameScreen");
+  if (!game || game.classList.contains("hidden")) return;
+  event.preventDefault();
+  if (event.repeat) return;
+  runPython();
+}, true);
 if($("stopBtn"))$("stopBtn").addEventListener("click",stopPython);
 $("leaderboardBtn").addEventListener("click",()=>showLeaderboard("resultScreen"));
 $("backBtn").addEventListener("click",()=>showScreen(state.leaderboardReturn||"mainMenu"));
