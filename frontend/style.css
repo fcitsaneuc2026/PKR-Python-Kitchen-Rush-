@@ -40,6 +40,9 @@
 .menu-actions .menu-play-btn:nth-child(3) {
   animation: playPop .8s 3.4s both, cartoonShake 2.8s 4.3s ease-in-out infinite;
 }
+.menu-actions .menu-play-btn:nth-child(4) {
+  animation: playPop .8s 3.55s both, cartoonShake 2.8s 4.45s ease-in-out infinite;
+}
 #nameScreen { text-align:center; }
 #nameScreen button { margin-top:10px; }
 @keyframes titleReveal { 0% { opacity:0; transform:translateX(-80px) rotate(-8deg) scale(.9); } 55% { opacity:.7; transform:translateX(12px) rotate(4deg) scale(1.04); } 75% { opacity:1; transform:translateX(-5px) rotate(-2deg); } 100% { opacity:1; transform:translateX(0) rotate(0); } }
@@ -4060,10 +4063,24 @@ body.in-game > .lang-toggle {
 @media (max-width: 760px) {
   #gameScreen .pkr-game-layout {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: minmax(200px, 1.1fr) minmax(180px, 0.85fr) minmax(160px, 0.8fr) !important;
+    grid-template-rows: minmax(200px, 1.1fr) minmax(200px, 1fr) minmax(160px, 0.8fr) !important;
     grid-template-areas:
       "game"
       "side"
       "guide" !important;
+  }
+
+  #gameScreen .pkr-side-column {
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+
+  #gameScreen .pkr-side-column .status-panel,
+  #gameScreen .pkr-side-column .command-panel {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    height: 100% !important;
+    max-height: none !important;
+    min-width: 0 !important;
   }
 }

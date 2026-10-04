@@ -38,7 +38,7 @@ const state = {
   backpack: [null, null, null, null], collectSeq: 1, floorItems: [],
   currentOrder: null, orderNumber: 1,
   items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false,
-  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false, quitPromptOpen: false,
+  dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false, quitPromptOpen: false, practice: false,
   lastEndScreen: null, leaderboardRows: null
 };
 
@@ -2018,7 +2018,7 @@ function cancelQuitGame(){
   setQuitConfirmOpen(false);
 }
 function saveUnfinishedRound(){
-  if(state.scoreSaved||state.gameEnded||!state.running||!String(state.playerName||"").trim())return;
+  if(state.practice||state.scoreSaved||state.gameEnded||!state.running||!String(state.playerName||"").trim())return;
   state.scoreSaved=true;
   const body=JSON.stringify(scorePayload(false));
   try{
@@ -2036,7 +2036,7 @@ function showEndScreen({finished,name,served,score,timeTaken,saved}){
   if($("resultTime"))$("resultTime").textContent=timeTaken||"0:00";
   if($("resultScore"))$("resultScore").textContent=String(score??0);
   if($("resultNote")){
-    $("resultNote").textContent=saved===false?t("saveFail"):t("savedBoard");
+    $("resultNote").textContent=saved==="practice"?t("practiceNote"):saved===false?t("saveFail"):t("savedBoard");
   }
   showScreen("resultScreen");
 }
@@ -2058,6 +2058,12 @@ async function endRound(finished){
     timeTaken:formatDuration(elapsed),
     saved:true
   });
+  if(state.practice){
+    state.scoreSaved=true;
+    if($("resultNote"))$("resultNote").textContent=t("practiceNote");
+    if(state.lastEndScreen)state.lastEndScreen.saved="practice";
+    return;
+  }
   if(state.scoreSaved)return;
   state.scoreSaved=true;
   try{
@@ -2164,7 +2170,7 @@ function applyI18n() {
     if ($("resultBadge")) $("resultBadge").textContent = keep.finished ? t("timesUp") : t("leftEarly");
     if ($("resultHeadline")) $("resultHeadline").textContent = keep.finished ? t("kitchenClosed") : t("shiftPaused");
     if ($("resultPlayerName")) $("resultPlayerName").textContent = keep.name || t("chef");
-    if ($("resultNote")) $("resultNote").textContent = keep.saved === false ? t("saveFail") : t("savedBoard");
+    if ($("resultNote")) $("resultNote").textContent = keep.saved === "practice" ? t("practiceNote") : keep.saved === false ? t("saveFail") : t("savedBoard");
   }
   if (Array.isArray(state.leaderboardRows) && $("leaderboardScreen") && !$("leaderboardScreen").classList.contains("hidden")) {
     renderLeaderboardDashboard(state.leaderboardRows);
@@ -2182,13 +2188,56 @@ function toggleLang() {
   applyI18n();
 }
 
-$("startBtn").addEventListener("click",()=>{
-  const name=$("playerName").value.trim();if(!name){alert(t("needName"));return;}
-  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.collectSeq=1;clearFloorItems();state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.quitPromptOpen=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
+function beginRound(name, practice){
+  state.practice=!!practice;
+  state.playerName=name;
+  state.score=0;
+  state.ordersCompleted=0;
+  state.timeLeft=state.timeLimit;
+  state.startedAt=null;
+  state.finishedAt=null;
+  state.backpack=[null,null,null,null];
+  state.collectSeq=1;
+  clearFloorItems();
+  state.items={};
+  state.orderNumber=1;
+  state.currentOrder=null;
+  state.gameEnded=false;
+  state.running=true;
+  state.pythonRunning=false;
+  state.scriptStopped=false;
+  state.scoreSaved=false;
+  state.quitPromptOpen=false;
+  state.dirtyPlates=0;
+  state.actionQueue=Promise.resolve();
+  if($("codeEditor"))$("codeEditor").value="";
+  const out=$("consoleOutput");
+  if(out)out.textContent=state.pyodide?t("pythonLoaded"):t("pythonLoading");
+  resetStationWork();
+  useGuideHost("game");
+  showScreen("gameScreen");
   startGuideDemo("movement");
   if(!state.scene){state.phaser=new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:KitchenScene});}
-  newOrder();updateHUD();startTimer();
+  newOrder();
+  updateHUD();
+  startTimer();
+}
+$("startBtn").addEventListener("click",()=>{
+  const name=$("playerName").value.trim();if(!name){alert(t("needName"));return;}
+  playOptionalSound("button_click");
+  beginRound(name,false);
 });
+$("practiceMenuBtn")?.addEventListener("click",()=>{
+  playOptionalSound("button_click");
+  try{sessionStorage.setItem("pkr-practice","1");}catch(_){}
+  location.reload();
+});
+try{
+  if(sessionStorage.getItem("pkr-practice")==="1"){
+    sessionStorage.removeItem("pkr-practice");
+    beginRound(t("practiceName"),true);
+  }
+}catch(_){}
 let consoleExpandLock = false;
 function clearConsoleExpandStyles(panel) {
   ["transition", "position", "z-index", "left", "width", "top", "height"].forEach(prop => panel.style.removeProperty(prop));
