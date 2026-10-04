@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=ui6" />
+  <link rel="stylesheet" href="/static/style.css?v=ui14" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -49,21 +49,7 @@
           </div>
 
           <div class="pkr-game-body">
-            <aside class="panel status-panel player-info-panel">
-              <div class="status-window-bar">
-                <h2 data-i18n="statusWindow">Status Window</h2>
-              </div>
-              <div class="status-window-body">
-                <div class="player-info-section">
-                  <strong data-i18n="playerCoord">Player's Coordinate</strong>
-                  <div id="playerCoordinate">(1, 1)</div>
-                </div>
-                <div class="player-info-section">
-                  <strong data-i18n="backpack">Backpack</strong>
-                  <div id="backpack" class="backpack"></div>
-                </div>
-              </div>
-            </aside>
+            <div id="outputBackdrop" class="output-backdrop" aria-hidden="true"></div>
 
             <div class="coordinate-board" aria-label="10 by 10 coordinate guide">
               <div class="game-stage-wrap">
@@ -144,6 +130,26 @@
               </div>
             </div>
 
+          </div>
+        </section>
+
+        <div class="pkr-side-column">
+          <aside class="panel status-panel player-info-panel">
+            <div class="status-window-bar">
+              <h2 data-i18n="statusWindow">Status Window</h2>
+            </div>
+            <div class="status-window-body">
+              <div class="player-info-section">
+                <strong data-i18n="playerCoord">Player's Coordinate</strong>
+                <div id="playerCoordinate">(1, 1)</div>
+              </div>
+              <div class="player-info-section">
+                <strong data-i18n="backpack">Backpack</strong>
+                <div id="backpack" class="backpack"></div>
+              </div>
+            </div>
+          </aside>
+
         <section class="panel command-panel">
           <div class="command-curtain-bar">
             <h2 data-i18n="commandWindow">Command Window</h2>
@@ -154,12 +160,14 @@
               <button id="runBtn" class="primary-btn" disabled data-i18n="runPython">▶ Run Python</button>
               <button id="stopBtn" class="primary-btn stop-btn" disabled data-i18n="stopPython">■ Stop Python</button>
             </div>
-            <div class="console-title" data-i18n="commandOutput">Command output</div>
+            <div class="console-title">
+              <span data-i18n="commandOutput">Command output</span>
+              <button type="button" id="consoleExpandBtn" class="console-expand-btn" aria-expanded="false">Expand</button>
+            </div>
             <pre id="consoleOutput" class="console">Python is loading…</pre>
           </div>
         </section>
-          </div>
-        </section>
+        </div>
 
         <section class="panel guidance-panel no-copy">
           <div class="panel-heading">
@@ -180,6 +188,7 @@
             </div>
             <div class="visual-guide" id="visualGuide">
               <div class="guide-demo" id="guideDemo">
+                <div class="guide-kitchen-card">
                 <div class="guide-mini-wrap" id="guideMiniWrap">
                   <div class="guide-mini-y" aria-hidden="true">
                     <span>10</span><span>9</span><span>8</span><span>7</span><span>6</span>
@@ -190,6 +199,7 @@
                 <div class="guide-mini-x" id="guideMiniX" aria-hidden="true">
                   <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
                   <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+                </div>
                 </div>
                 <div class="guide-wait-stage" id="guideWaitStage" hidden>
                   <img class="guide-wait-player" src="/static/assets/player/player_down.png" alt="Player waiting">
@@ -206,9 +216,8 @@
               <div class="guide-action" id="guideAction">Walk on the 10 × 10 grid</div>
             </div>
             <div class="command-guide">
-              <h3 data-i18n="commandGuidance">Command Guidance</h3>
               <div class="mini-command-window no-copy" aria-hidden="true">
-                <div class="command-curtain-bar"><h2 data-i18n="commandWindow">Command Window</h2></div>
+                <div class="command-curtain-bar"><h2 data-i18n="commandGuidance">Command Guidance</h2></div>
                 <pre id="guideCode" class="mini-command-code">move_to(3, 9)</pre>
               </div>
               <p id="guideText">Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.</p>
@@ -315,7 +324,7 @@
     </section>
   </main>
 
-  <script src="/static/i18n.js?v=i18n2"></script>
-  <script src="/static/game.js?v=ui3"></script>
+  <script src="/static/i18n.js?v=i18n3"></script>
+  <script src="/static/game.js?v=ui6"></script>
 </body>
 </html>

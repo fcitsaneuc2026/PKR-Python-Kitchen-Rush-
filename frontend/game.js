@@ -35,7 +35,8 @@ const state = {
   playerName: "", score: 0, ordersCompleted: 0,
   timeLimit: 600, timeLeft: 600, startedAt: null, finishedAt: null,
   running: false, pyodide: null, scene: null, player: null,
-  backpack: [null, null, null, null], currentOrder: null, orderNumber: 1,
+  backpack: [null, null, null, null], collectSeq: 1, floorItems: [],
+  currentOrder: null, orderNumber: 1,
   items: {}, gameEnded: false, actionQueue: Promise.resolve(), pythonRunning: false, scriptStopped: false,
   dirtyPlates: 0, leaderboardReturn: "mainMenu", scoreSaved: false, quitPromptOpen: false,
   lastEndScreen: null, leaderboardRows: null
@@ -166,6 +167,83 @@ function isWalkable(column, row) {
   const c = Number(column), r = Number(row);
   if (!Number.isInteger(c) || !Number.isInteger(r) || c < 1 || c > 10 || r < 1 || r > 10) return false;
   return !isBlockedCoordinate(c, r);
+}
+
+// Lettuce, tomato, bun, and patty can spill out of a full backpack.
+// Burgers still need a free slot.
+const MATERIAL_TYPES = ["bun", "patty", "lettuce", "tomato"];
+
+function isEmptyDropTile(column, row) {
+  const c = Number(column), r = Number(row);
+  if (!isWalkable(c, r)) return false;
+  const here = playerGrid();
+  if (here.column === c && here.row === r) return false;
+  return !state.floorItems.some(item => item.column === c && item.row === r);
+}
+
+// Left, right, above, or below the player. If those four tiles are blocked,
+// look one tile farther along the same four directions.
+function findDropTile() {
+  const here = playerGrid();
+  for (let radius = 1; radius < GRID_SIZE * 2; radius++) {
+    const open = [
+      { column: here.column - radius, row: here.row },
+      { column: here.column + radius, row: here.row },
+      { column: here.column, row: here.row + radius },
+      { column: here.column, row: here.row - radius }
+    ].filter(tile => isEmptyDropTile(tile.column, tile.row));
+    if (open.length) return open[Math.floor(Math.random() * open.length)];
+  }
+  return null;
+}
+
+function oldestBackpackIndex() {
+  let best = -1;
+  let bestSeq = Infinity;
+  state.backpack.forEach((item, index) => {
+    if (!item) return;
+    const seq = Number.isFinite(item.seq) ? item.seq : index;
+    if (seq < bestSeq) {
+      bestSeq = seq;
+      best = index;
+    }
+  });
+  return best;
+}
+
+function clearFloorItems() {
+  (state.floorItems || []).forEach(item => state.scene?.releaseFloorItem(item));
+  state.floorItems = [];
+}
+
+function dropOnFloor(item, tile) {
+  const entry = { type: item.type, status: item.status, column: tile.column, row: tile.row };
+  state.floorItems.push(entry);
+  state.scene?.attachFloorItem(entry);
+  log(t("logDropped", { item: itemPhrase(item.type, item.status), c: tile.column, r: tile.row }));
+  return entry;
+}
+
+function floorStatusText() {
+  if (!state.floorItems.length) return "";
+  return state.floorItems
+    .map(item => `(${item.column}, ${item.row}) ${itemPhrase(item.type, item.status)}`)
+    .join(", ");
+}
+
+function syncFloorItemDepth() {
+  const here = playerGrid();
+  state.floorItems.forEach(item => {
+    const front = item.column === here.column && item.row === here.row;
+    const depth = front ? 7 : 4;
+    if (item.sprite?.setDepth) item.sprite.setDepth(depth);
+    if (item.label?.setDepth) item.label.setDepth(depth + 1);
+  });
+}
+
+function floorItemHere() {
+  const here = playerGrid();
+  return state.floorItems.findIndex(item => item.column === here.column && item.row === here.row);
 }
 
 function shortestPath(from, to) {
@@ -336,7 +414,7 @@ const GUIDE_LESSONS = {
   ],
   take: [
     "Take from a chest",
-    "Stand on any empty tile next to Lettuce (1, 10), Tomato (2, 10), Bun (3, 10), or Patty (4, 10). For the bun chest, (3, 9) is the tile below it. Needs a free backpack slot.",
+    "Stand on an empty tile next to a chest. Lettuce is (1, 10), Tomato is (2, 10), Bun is (3, 10), and Patty is (4, 10). take() fills the next empty backpack slot and remembers pickup order. When all 4 slots are full, the new ingredient replaces the oldest one. After 1st, 2nd, 3rd, and 4th, the 5th replaces the 1st, so the backpack becomes 5th, 2nd, 3rd, 4th. The 6th replaces the 2nd: 5th, 6th, 3rd, 4th. The replaced ingredient drops on an empty tile to your left, right, above, or below. It floats for 3 seconds, fading once each second, then disappears.",
     'move_to(3, 9)\ntake("bun")'
   ],
   cook: [
@@ -351,7 +429,7 @@ const GUIDE_LESSONS = {
   ],
   collect: [
     "Pick up finished food",
-    "Stand next to a finished pan, cutting board, or a complete plated burger at (7, 10) to (10, 10), then collect(). You need a free backpack slot.",
+    "Stand next to a finished pan, cutting board, or a complete burger, then collect(). To pick up a dropped ingredient, stand on its exact tile and collect(). Walking onto it does not pick it up. You stand behind it so the ingredient stays in front. If the backpack is full, that pickup replaces the oldest ingredient. A plated burger still needs an empty slot. A drop disappears after 3 seconds.",
     "move_to(7, 9)\ncollect()"
   ],
   plate: [
@@ -376,7 +454,7 @@ const GUIDE_LESSONS = {
   ],
   status: [
     "Check your state",
-    "Shows your position, backpack contents, current order, and needed materials in plain text.",
+    "Shows your position, backpack contents in pickup order, ingredients still on the floor, the current order, and the materials you still need.",
     "status()"
   ]
 };
@@ -626,7 +704,9 @@ function formatGuideStatusText() {
   const needed = order?.ingredients?.length
     ? order.ingredients.join(", ")
     : "bun, patty, lettuce, tomato";
-  return `${t("statusPos", { c: g.column, r: g.row })}\n${t("statusPack", { pack: backpackText })}\n${t("statusOrder", { order: orderName })}\n${t("statusNeed", { need: needed })}`;
+  const floor = floorStatusText();
+  const floorLine = floor ? `\n${t("statusFloor", { items: floor })}` : "";
+  return `${t("statusPos", { c: g.column, r: g.row })}\n${t("statusPack", { pack: backpackText })}${floorLine}\n${t("statusOrder", { order: orderName })}\n${t("statusNeed", { need: needed })}`;
 }
 
 function updateGuideStatusBox(position) {
@@ -1157,6 +1237,7 @@ class KitchenScene extends Phaser.Scene {
     if(!steps.length){
       state.player.x=this.playerSprite.x;
       state.player.y=this.playerSprite.y;
+      syncFloorItemDepth();
       updateHUD();
       return Promise.resolve();
     }
@@ -1181,6 +1262,7 @@ class KitchenScene extends Phaser.Scene {
           state.player.x=point.x;
           state.player.y=point.y;
           if(this.playerLabel)this.playerLabel.setPosition(point.x,point.y-36);
+          syncFloorItemDepth();
           updateHUD();
           resolve();
         }
@@ -1188,6 +1270,133 @@ class KitchenScene extends Phaser.Scene {
     });
   }
   showItemEffect(text,emoji){const t=this.add.text(state.player.x,state.player.y-34,`${emoji} ${text}`,{fontFamily:"Arial",fontSize:"14px",color:"#3A2A2A",backgroundColor:"#fff"}).setOrigin(.5);this.tweens.add({targets:t,y:t.y-22,alpha:0,duration:700,onComplete:()=>t.destroy()});}
+  attachFloorItem(entry){
+    const dest=gridToPixel(entry.column,entry.row);
+    const key=itemTexture(entry.type,entry.status)||"bunUncooked";
+    const from=state.player?{x:state.player.x,y:state.player.y-20}:dest;
+    const shadow=this.add.ellipse(dest.x,dest.y+8,20,8,0x3A2A2A,0.3).setDepth(3);
+    const sprite=this.add.image(from.x,from.y,key).setOrigin(0.5).setDisplaySize(32,32).setDepth(4);
+    entry.shadow=shadow;
+    entry.sprite=sprite;
+    this.bindFloorHover(entry,dest);
+    this.tweens.add({
+      targets:sprite,
+      x:dest.x,
+      y:dest.y-16,
+      duration:260,
+      ease:"Quad.easeOut",
+      onComplete:()=>{
+        if(!state.floorItems.includes(entry)||!entry.sprite?.active)return;
+        this.bobFloorItem(entry,dest);
+      }
+    });
+    this.startFloorFade(entry);
+  }
+  bindFloorHover(entry,dest){
+    const sprite=entry.sprite;
+    if(!sprite)return;
+    const rest=32;
+    const hover=Math.round(rest*1.22);
+    const label=this.add.text(dest.x,dest.y-46,itemPhrase(entry.type,entry.status),{
+      fontFamily:"Arial",
+      fontSize:"11px",
+      fontStyle:"bold",
+      color:"#3A2A2A",
+      backgroundColor:"#F9E6BD",
+      padding:{x:4,y:2}
+    }).setOrigin(0.5).setDepth(8).setVisible(false);
+    entry.label=label;
+    sprite.setInteractive({useHandCursor:true});
+    sprite.on("pointerover",()=>{
+      label.setText(itemPhrase(entry.type,entry.status));
+      label.setPosition(sprite.x,sprite.y-34);
+      label.setVisible(true).setAlpha(1);
+      entry.sizeTween?.stop();
+      entry.sizeTween=this.tweens.add({
+        targets:sprite,
+        displayWidth:hover,
+        displayHeight:hover,
+        duration:140,
+        ease:"Back.Out"
+      });
+    });
+    sprite.on("pointerout",()=>{
+      entry.sizeTween?.stop();
+      entry.sizeTween=this.tweens.add({
+        targets:sprite,
+        displayWidth:rest,
+        displayHeight:rest,
+        duration:140,
+        ease:"Sine.easeOut"
+      });
+      this.tweens.add({
+        targets:label,
+        alpha:0,
+        duration:100,
+        onComplete:()=>label.setVisible(false)
+      });
+    });
+  }
+  startFloorFade(entry){
+    const fadeTo=(alpha)=>{
+      const targets=[entry.sprite,entry.shadow].filter(node=>node?.active);
+      if(!targets.length)return;
+      this.tweens.add({targets,alpha,duration:450,ease:"Sine.easeOut"});
+    };
+    entry.fadeCalls=[1,2,3].map(second=>this.time.delayedCall(second*1000,()=>{
+      if(!state.floorItems.includes(entry))return;
+      if(second<3){
+        fadeTo(1-second/3);
+        return;
+      }
+      const index=state.floorItems.indexOf(entry);
+      if(index!==-1)state.floorItems.splice(index,1);
+      log(t("logFaded",{item:itemPhrase(entry.type,entry.status)}));
+      this.releaseFloorItem(entry);
+    }));
+  }
+  bobFloorItem(entry,dest){
+    const sprite=entry.sprite;
+    if(!sprite?.active)return;
+    sprite.setPosition(dest.x,dest.y-16);
+    this.tweens.add({
+      targets:sprite,
+      y:dest.y-28,
+      duration:680,
+      yoyo:true,
+      repeat:-1,
+      ease:"Sine.easeInOut"
+    });
+    this.tweens.add({
+      targets:sprite,
+      angle:360,
+      duration:2400,
+      repeat:-1,
+      ease:"Linear"
+    });
+  }
+  releaseFloorItem(entry){
+    if(!entry)return;
+    entry.fadeCalls?.forEach(call=>call.remove(false));
+    entry.fadeCalls=null;
+    entry.sizeTween?.stop();
+    entry.sizeTween=null;
+    if(entry.sprite){
+      this.tweens.killTweensOf(entry.sprite);
+      entry.sprite.destroy();
+      entry.sprite=null;
+    }
+    if(entry.shadow){
+      this.tweens.killTweensOf(entry.shadow);
+      entry.shadow.destroy();
+      entry.shadow=null;
+    }
+    if(entry.label){
+      this.tweens.killTweensOf(entry.label);
+      entry.label.destroy();
+      entry.label=null;
+    }
+  }
   showBunChestAnimation(){
     if(!this.bunChestSprite)return;
     this.bunChestSprite.setTexture("bunChestOpen");
@@ -1381,11 +1590,23 @@ function itemTexture(type,status){
 }
 
 function addIngredient(type,status){
-  const index=state.backpack.findIndex(item=>!item);
-  if(index===-1)fail(t("failPackFull"));
   if(!ingredientInfo[type]?.states[status])fail(t("failBadItem"));
-  state.backpack[index]={type,status};
+  const made={type,status,seq:state.collectSeq++};
+  const index=state.backpack.findIndex(item=>!item);
+  if(index!==-1){
+    state.backpack[index]=made;
+    renderIngredientBackpack();
+    return null;
+  }
+  if(!MATERIAL_TYPES.includes(type))fail(t("failPackFull"));
+  const oldest=oldestBackpackIndex();
+  const tile=findDropTile();
+  if(oldest<0||!tile)fail(t("failNoDropSpace"));
+  const dropped=state.backpack[oldest];
+  state.backpack[oldest]=made;
   renderIngredientBackpack();
+  dropOnFloor(dropped,tile);
+  return dropped;
 }
 function removeIngredient(type,status){
   const index=state.backpack.findIndex(item=>item&&item.type===type&&(!status||item.status===status));
@@ -1455,7 +1676,7 @@ function executeGameCommand(name,args){
     const type=String(args[0]);
     return action(async()=>{
       if(!ingredientInfo[type])fail(t("failTakeArgs"));
-      if(!backpackHasSpace())fail(t("failPackTake",{type}));
+      if(!backpackHasSpace()&&!findDropTile())fail(t("failNoDropSpace"));
       const station=requireNear(type, `take("${type}")`);
       const sprite=state.scene.stationSprites?.[type];
       const rest=sprite?.getData("restSize")||44;
@@ -1482,16 +1703,37 @@ function executeGameCommand(name,args){
   if(name==="cut")return startToolWork(String(args[0]),"cuttingBoard");
   if(name==="collect"){
     return action(async()=>{
+      const floorIndex=floorItemHere();
+      if(floorIndex!==-1){
+        const lying=state.floorItems[floorIndex];
+        if(!backpackHasSpace()){
+          if(!MATERIAL_TYPES.includes(lying.type))fail(t("failPackCollect"));
+          if(!findDropTile())fail(t("failNoDropSpace"));
+        }
+        state.floorItems.splice(floorIndex,1);
+        state.scene.releaseFloorItem(lying);
+        const phrase=itemPhrase(lying.type,lying.status);
+        const tex=itemTexture(lying.type,lying.status);
+        const spot=gridToPixel(lying.column,lying.row);
+        await state.scene.showCarry(tex,spot,220);
+        log(t("logPickedFloor",{item:phrase,c:lying.column,r:lying.row}));
+        addIngredient(lying.type,lying.status);
+        await state.scene.showCarry(tex,"player",380);
+        state.scene.hideCarry();
+        state.scene.showItemEffect(phrase,"");
+        syncFloorItemDepth();
+        return;
+      }
       const nearbyTools=nearbyStations("pan").concat(nearbyStations("cuttingBoard"));
       const readyTools=nearbyTools.filter(station=>station.work?.phase==="ready"&&station.work.item);
       const readyPlates=nearbyStations("plate").filter(station=>station.work?.phase==="complete");
       const ready=readyTools.concat(readyPlates);
       if(!nearbyTools.length&&!nearbyStations("plate").length)fail(t("failStandCollect"));
       if(!ready.length)fail(t("failNothingCollect"));
-      if(!backpackHasSpace())fail(t("failPackCollect"));
       const station=nearestStation(ready);
       state.scene.faceToward(station);
       if(station.kind==="plate"){
+        if(!backpackHasSpace())fail(t("failPackCollect"));
         const burgerTex=itemTexture("burger","plated");
         await state.scene.showCarry(burgerTex,station,260);
         station.work={phase:"vacant",items:[]};
@@ -1503,6 +1745,7 @@ function executeGameCommand(name,args){
         log(t("logBurger"));
         return;
       }
+      if(!backpackHasSpace()&&!findDropTile())fail(t("failNoDropSpace"));
       const item=station.work.item;
       const tex=itemTexture(item.type,item.status);
       await state.scene.showCarry(tex,station,280);
@@ -1625,6 +1868,8 @@ function executeGameCommand(name,args){
     const orderText=order?t("orderN",{name:t("classicBurger"),id:order.id}):t("none");
     log(t("statusPos",{c:g.column,r:g.row}));
     log(t("statusPack",{pack:backpackText}));
+    const floor=floorStatusText();
+    if(floor)log(t("statusFloor",{items:floor}));
     log(t("statusOrder",{order:orderText}));
     log(t("statusNeed",{need:needed}));
   });
@@ -1897,6 +2142,13 @@ function applyI18n() {
   const labels = state.scene?.stationLabels;
   if (labels) Object.entries(labels).forEach(([id, label]) => { if (label?.setText) label.setText(stationDisplayName(id)); });
   if (state.scene?.playerLabel?.setText) state.scene.playerLabel.setText(t("player"));
+  state.floorItems.forEach(item => { if (item.label?.setText) item.label.setText(itemPhrase(item.type, item.status)); });
+  const expandBtn = $("consoleExpandBtn");
+  if (expandBtn) {
+    const open = $("gameScreen")?.classList.contains("is-output-expanded");
+    expandBtn.textContent = t(open ? "collapseOutput" : "expandOutput");
+    expandBtn.setAttribute("aria-label", t(open ? "collapseOutputAria" : "expandOutputAria"));
+  }
   const tab = document.querySelector("#gameScreen .guide-tabs .tab.active")?.dataset.tab || "movement";
   if ($("guideAction")) {
     const [action, text, code] = getLesson(tab);
@@ -1932,11 +2184,67 @@ function toggleLang() {
 
 $("startBtn").addEventListener("click",()=>{
   const name=$("playerName").value.trim();if(!name){alert(t("needName"));return;}
-  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.quitPromptOpen=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
+  playOptionalSound("button_click");state.playerName=name;state.score=0;state.ordersCompleted=0;state.timeLeft=state.timeLimit;state.backpack=[null,null,null,null];state.collectSeq=1;clearFloorItems();state.items={};state.orderNumber=1;state.gameEnded=false;state.running=true;state.pythonRunning=false;state.scriptStopped=false;state.scoreSaved=false;state.quitPromptOpen=false;state.actionQueue=Promise.resolve();resetStationWork();useGuideHost("game");showScreen("gameScreen");
   startGuideDemo("movement");
   if(!state.scene){state.phaser=new Phaser.Game({type:Phaser.AUTO,width:480,height:480,parent:"gameContainer",backgroundColor:"#F4D6A0",scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:KitchenScene});}
   newOrder();updateHUD();startTimer();
 });
+let consoleExpandLock = false;
+function clearConsoleExpandStyles(panel) {
+  ["transition", "position", "z-index", "left", "width", "top", "height"].forEach(prop => panel.style.removeProperty(prop));
+}
+function syncConsoleExpandBtn(open) {
+  const btn = $("consoleExpandBtn");
+  if (!btn) return;
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  btn.textContent = t(open ? "collapseOutput" : "expandOutput");
+  btn.setAttribute("aria-label", t(open ? "collapseOutputAria" : "expandOutputAria"));
+}
+function toggleConsoleExpand() {
+  if (consoleExpandLock) return;
+  const panel = document.querySelector("#gameScreen .command-panel");
+  const body = document.querySelector("#gameScreen .pkr-side-column") || document.querySelector("#gameScreen .pkr-game-body");
+  const screen = $("gameScreen");
+  if (!panel || !body || !screen) return;
+  consoleExpandLock = true;
+  const opening = !screen.classList.contains("is-output-expanded");
+  const bodyRect = body.getBoundingClientRect();
+  if (opening) {
+    const rect = panel.getBoundingClientRect();
+    panel.dataset.collapsedTop = String(rect.top - bodyRect.top);
+    panel.dataset.collapsedHeight = String(rect.height);
+    panel.dataset.collapsedLeft = String(rect.left - bodyRect.left);
+    panel.dataset.collapsedWidth = String(rect.width);
+    const pin = (prop, value) => panel.style.setProperty(prop, value, "important");
+    pin("transition", "none");
+    pin("position", "absolute");
+    pin("z-index", "50");
+    pin("left", panel.dataset.collapsedLeft + "px");
+    pin("width", panel.dataset.collapsedWidth + "px");
+    pin("top", panel.dataset.collapsedTop + "px");
+    pin("height", panel.dataset.collapsedHeight + "px");
+    screen.classList.add("is-output-expanded");
+    syncConsoleExpandBtn(true);
+    panel.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      pin("transition", "top .45s cubic-bezier(.22,1,.36,1), height .45s cubic-bezier(.22,1,.36,1)");
+      pin("top", "8px");
+      pin("height", Math.max(rect.height, bodyRect.height - 16) + "px");
+    });
+  } else {
+    const pin = (prop, value) => panel.style.setProperty(prop, value, "important");
+    pin("transition", "top .45s cubic-bezier(.22,1,.36,1), height .45s cubic-bezier(.22,1,.36,1)");
+    pin("top", (panel.dataset.collapsedTop || "0") + "px");
+    pin("height", (panel.dataset.collapsedHeight || String(panel.offsetHeight)) + "px");
+    syncConsoleExpandBtn(false);
+    window.setTimeout(() => {
+      screen.classList.remove("is-output-expanded");
+      clearConsoleExpandStyles(panel);
+    }, 460);
+  }
+  window.setTimeout(() => { consoleExpandLock = false; }, 480);
+}
+$("consoleExpandBtn")?.addEventListener("click", toggleConsoleExpand);
 $("runBtn").addEventListener("click",runPython);
 if($("stopBtn"))$("stopBtn").addEventListener("click",stopPython);
 $("leaderboardBtn").addEventListener("click",()=>showLeaderboard("resultScreen"));

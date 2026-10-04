@@ -5,7 +5,7 @@ window.PKR_GUIDE_ZH = {
   ],
   take: [
     "从箱子拿食材",
-    "站在生菜 (1, 10)、番茄 (2, 10)、面包 (3, 10) 或肉饼 (4, 10) 旁边的空地上。面包箱下方格子是 (3, 9)。背包需要有空位。"
+    "站在箱子旁边的空地上。生菜 (1, 10)，番茄 (2, 10)，面包 (3, 10)，肉饼 (4, 10)。take() 按拿取顺序放入空的背包格。四格都满时，新食材替换最早拿的那一个。若已有第 1、2、3、4 个，第 5 个会替换第 1 个，变成第 5、2、3、4 个。第 6 个会替换第 2 个，变成第 5、6、3、4 个。被替换的食材掉在你左、右、上或下的空格子上，停留 3 秒，每一秒变淡一点，然后消失。"
   ],
   cook: [
     "开始烹饪",
@@ -17,7 +17,7 @@ window.PKR_GUIDE_ZH = {
   ],
   collect: [
     "收起做好的食物",
-    "站在已完成的煎锅、砧板，或 (7, 10) 到 (10, 10) 上做好的汉堡旁边，然后 collect()。背包需要有空位。"
+    "在做好的煎锅、砧板或完整汉堡旁边使用 collect()。要捡地上的食材，必须站在它所在的那一格，再 collect()。只是走上去不会捡起，你会站在食材后面，食材显示在前面。背包满了时，这次捡起也会替换最早的食材。装盘汉堡仍然需要空位。地上的食材 3 秒后消失。"
   ],
   plate: [
     "把食材放到盘子上",
@@ -37,7 +37,7 @@ window.PKR_GUIDE_ZH = {
   ],
   status: [
     "查看当前状态",
-    "用文字显示你的位置、背包内容、当前订单，以及还需要的食材。"
+    "用文字显示你的位置、按拿取顺序排列的背包、还留在地上的食材、当前订单，以及还需要的食材。"
   ]
 };
 
@@ -134,6 +134,7 @@ window.PKR_I18N = {
     statusPack: "Backpack: {{pack}}",
     statusOrder: "Current order: {order}",
     statusNeed: "Needed: {need}",
+    statusFloor: "On the floor: {items}",
     ing_bun: "Bun",
     ing_patty: "Patty",
     ing_lettuce: "Lettuce",
@@ -179,6 +180,14 @@ window.PKR_I18N = {
     failTakeArgs: "take() needs \"bun\", \"patty\", \"lettuce\", or \"tomato\".",
     failPackTake: "backpack is full, cannot take(\"{type}\").",
     logTook: "Took {item}.",
+    logDropped: "Dropped {item} at ({c}, {r}).",
+    logPickedFloor: "Picked up {item} from ({c}, {r}).",
+    logFaded: "{item} faded from the floor.",
+    expandOutput: "Expand",
+    collapseOutput: "Collapse",
+    expandOutputAria: "Show a larger command output",
+    collapseOutputAria: "Shrink the command output",
+    failNoDropSpace: "every nearby tile is blocked, so nothing can be dropped.",
     failStandCollect: "stand next to a finished pan, cutting board, or complete plate before collect().",
     failNothingCollect: "nothing is ready to collect() yet.",
     failPackCollect: "backpack is full, cannot collect().",
@@ -300,6 +309,7 @@ window.PKR_I18N = {
     statusPack: "背包：{{pack}}",
     statusOrder: "当前订单：{order}",
     statusNeed: "需要：{need}",
+    statusFloor: "地上：{items}",
     ing_bun: "面包",
     ing_patty: "肉饼",
     ing_lettuce: "生菜",
@@ -345,6 +355,14 @@ window.PKR_I18N = {
     failTakeArgs: "take() 需要 \"bun\"、\"patty\"、\"lettuce\" 或 \"tomato\"。",
     failPackTake: "背包已满，无法 take(\"{type}\")。",
     logTook: "拿取了{item}。",
+    logDropped: "把{item}掉在了 ({c}, {r})。",
+    logPickedFloor: "从 ({c}, {r}) 捡起了{item}。",
+    logFaded: "{item}在地上消失了。",
+    expandOutput: "展开",
+    collapseOutput: "收起",
+    expandOutputAria: "放大命令输出",
+    collapseOutputAria: "收回命令输出",
+    failNoDropSpace: "周围格子都被占满，没法把食材掉在地上。",
     failStandCollect: "使用 collect() 前，请站在已完成的煎锅、砧板或完整盘子旁边。",
     failNothingCollect: "现在还没有可以 collect() 的东西。",
     failPackCollect: "背包已满，无法 collect()。",
