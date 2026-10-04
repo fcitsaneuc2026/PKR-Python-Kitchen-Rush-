@@ -155,7 +155,7 @@ html, body {
 #gameScreen .guidance-panel h3,
 #gameScreen .tab,
 #gameScreen .command-guide p,
-#gameScreen .command-guide pre,
+#gameScreen .command-guide .mini-command-window,
 #gameScreen .editor-actions,
 #gameScreen .console-title {
   animation: playfulTextIn .65s both ease-out, gentleCartoonFloat 4s .8s ease-in-out infinite;
@@ -167,7 +167,7 @@ html, body {
 #gameScreen .axis-note { animation-delay: .22s, 1.25s; }
 #gameScreen .guidance-panel h3 { animation-delay: .28s, 1.4s; }
 #gameScreen .command-guide p { animation-delay: .34s, 1.55s; }
-#gameScreen .command-guide pre { animation-delay: .4s, 1.7s; }
+#gameScreen .command-guide .mini-command-window { animation-delay: .4s, 1.7s; }
 #gameScreen .editor-actions { animation-delay: .46s, 1.85s; }
 #gameScreen .console-title { animation-delay: .52s, 2s; }
 
@@ -225,10 +225,8 @@ html, body {
   min-width: 0;
 }
 
-.command-guide pre {
+.command-guide .mini-command-window {
   max-width: 100%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1100px) {
@@ -452,9 +450,9 @@ html, body {
   line-height: 1.6;
 }
 
-#gameScreen .command-guide pre {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(14px, 1.25vw, 17px);
+#gameScreen .mini-command-code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: clamp(13px, 1.2vw, 16px);
   line-height: 1.6;
 }
 
@@ -2769,6 +2767,29 @@ html, body, .app-shell {
   overflow: auto;
 }
 
+#gameScreen .command-guide {
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#gameScreen .command-guide h3 {
+  flex: 0 0 auto;
+}
+
+#gameScreen .command-guide p {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 48%;
+  overflow: auto;
+}
+
+#gameScreen .command-guide .mini-command-window {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
 #gameScreen .environment-side,
 #gameScreen .environment-decor,
 #gameScreen .delivery-lane,
@@ -3052,11 +3073,14 @@ html, body, .app-shell {
 
 .tutorial-screen {
   min-height: 100vh;
+  height: 100vh;
   margin: 0;
-  padding: clamp(16px, 3vw, 32px);
+  padding: clamp(12px, 2vw, 24px);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: auto;
   background: radial-gradient(circle at 50% 15%, #fff8df 0%, #fff1c9 42%, #f4d6a0 100%);
 }
 
@@ -3065,11 +3089,23 @@ html, body, .app-shell {
 }
 
 .tutorial-layout {
-  width: min(1100px, 100%);
+  width: min(1180px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(16px, 3vw, 36px);
+  gap: clamp(12px, 2.4vw, 28px);
+}
+
+.tutorial-back-btn {
+  position: relative;
+  z-index: 2;
+  margin: 0 !important;
+  min-width: 84px !important;
+  min-height: 84px;
+  padding: 12px 22px !important;
+  font-size: 36px !important;
+  line-height: 1 !important;
+  animation: none !important;
 }
 
 .tutorial-main {
@@ -3080,7 +3116,7 @@ html, body, .app-shell {
 }
 
 .tutorial-square {
-  width: min(72vw, 68vh, 460px);
+  width: min(56vw, 46vh, 380px);
   aspect-ratio: 1;
   background: #fff8e7;
   border: 4px solid var(--wood);
@@ -3088,7 +3124,7 @@ html, body, .app-shell {
   box-shadow: 0 8px 0 rgba(139, 90, 60, .2);
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: 14px;
 }
 
 .tutorial-screen .guide-demo {
@@ -3256,8 +3292,8 @@ html, body, .app-shell {
 }
 
 .tutorial-script {
-  width: min(72vw, 68vh, 460px);
-  margin-top: 16px;
+  width: min(56vw, 46vh, 380px);
+  margin-top: 10px;
   text-align: left;
 }
 
@@ -3271,27 +3307,17 @@ html, body, .app-shell {
 }
 
 .tutorial-script h3 {
-  margin: 0 0 8px;
-  font-size: clamp(22px, 3vw, 30px);
+  margin: 0 0 6px;
+  font-size: clamp(18px, 2.4vw, 26px);
   color: var(--wood);
 }
 
 .tutorial-script p {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-weight: 700;
   color: var(--ink);
-  line-height: 1.45;
-}
-
-.tutorial-script pre {
-  margin: 0;
-  padding: 12px 14px;
-  background: var(--navy);
-  color: #e8f1ff;
-  border-radius: 10px;
-  overflow: auto;
-  font: 15px/1.5 Consolas, monospace;
-  white-space: pre-wrap;
+  line-height: 1.4;
+  font-size: clamp(13px, 1.4vw, 16px);
 }
 
 .tutorial-next-btn {
@@ -3308,7 +3334,9 @@ html, body, .app-shell {
     grid-template-columns: 1fr;
     justify-items: center;
   }
+  .tutorial-back-btn,
   .tutorial-next-btn { width: min(280px, 100%); min-height: 64px; font-size: 28px !important; }
+  .tutorial-back-btn { justify-self: start; }
 }
 
 .result-menu,
@@ -3422,6 +3450,77 @@ body {
   padding: 8px 16px;
   font-size: 15px;
   animation: none !important;
+}
+
+body.in-game > .lang-toggle {
+  display: none !important;
+}
+
+#gameScreen .hud-lang-toggle {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 2;
+  min-width: 44px !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 3px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  animation: none !important;
+  box-shadow: 0 3px 0 #a85b18 !important;
+  border-width: 2px !important;
+}
+
+#gameScreen .hud-lang-toggle:hover,
+#gameScreen .hud-lang-toggle:active {
+  animation: none !important;
+  transform: none;
+}
+
+.no-copy,
+.no-copy * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+.mini-command-window {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  background: #111827;
+  border: 2px solid #374151;
+  border-radius: 12px;
+}
+
+.mini-command-window .command-curtain-bar {
+  min-height: 26px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  color: #d1fae5;
+  background: #111827;
+  border-bottom: 1px solid #374151;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.mini-command-window .command-curtain-bar h2 {
+  margin: 0;
+  font: 700 12px/1 Consolas, "Courier New", monospace;
+}
+
+.mini-command-code {
+  display: block;
+  margin: 0;
+  padding: 6px 10px;
+  min-height: 1.8em;
+  background: #0b1220;
+  color: #d1fae5;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .lang-toggle:hover,

@@ -861,22 +861,28 @@ function openTutorial() {
 }
 
 function tutorialNext() {
-  playOptionalSound("button_click");
   if (tutorialIndex >= TUTORIAL_STEPS.length - 1) {
-    stopGuideDemo();
-    useGuideHost("game");
-    showScreen("mainMenu");
+    leaveTutorial();
     return;
   }
+  playOptionalSound("button_click");
   tutorialIndex += 1;
   showTutorialStep();
 }
 
 let currentScreenId = "mainMenu";
+function leaveTutorial() {
+  playOptionalSound("button_click");
+  stopGuideDemo();
+  useGuideHost("game");
+  showScreen("mainMenu");
+}
+
 function showScreen(id) {
   ["mainMenu", "nameScreen", "gameScreen", "resultScreen", "leaderboardScreen", "tutorialScreen"].forEach(screenId => {
     const el = $(screenId); if (el) el.classList.toggle("hidden", screenId !== id);
   });
+  document.body.classList.toggle("in-game", id === "gameScreen");
   window.scrollTo(0, 0);
   if (id !== currentScreenId) {
     currentScreenId = id;
@@ -1937,10 +1943,28 @@ $("leaderboardBtn").addEventListener("click",()=>showLeaderboard("resultScreen")
 $("backBtn").addEventListener("click",()=>showScreen(state.leaderboardReturn||"mainMenu"));
 $("restartBtn").addEventListener("click",()=>location.reload());
 $("tutorialNextBtn")?.addEventListener("click",tutorialNext);
+$("tutorialBackBtn")?.addEventListener("click",leaveTutorial);
 $("gameBackBtn")?.addEventListener("click",askQuitGame);
 $("quitConfirmYes")?.addEventListener("click",()=>{playOptionalSound("button_click");endRound(false);});
 $("quitConfirmNo")?.addEventListener("click",cancelQuitGame);
-$("langToggle")?.addEventListener("click",()=>{playOptionalSound("button_click");toggleLang();});
+function onLangToggle(){playOptionalSound("button_click");toggleLang();}
+$("langToggle")?.addEventListener("click",onLangToggle);
+$("gameLangToggle")?.addEventListener("click",onLangToggle);
+
+function noCopyTarget(node){
+  const el = node && node.nodeType === 3 ? node.parentElement : node;
+  return el && el.closest ? el.closest(".no-copy") : null;
+}
+document.addEventListener("copy",e=>{ if(noCopyTarget(e.target) || noCopyTarget(window.getSelection()?.anchorNode)) e.preventDefault(); },true);
+document.addEventListener("cut",e=>{ if(noCopyTarget(e.target) || noCopyTarget(window.getSelection()?.anchorNode)) e.preventDefault(); },true);
+document.addEventListener("contextmenu",e=>{ if(noCopyTarget(e.target)) e.preventDefault(); },true);
+document.addEventListener("selectstart",e=>{ if(noCopyTarget(e.target)) e.preventDefault(); },true);
+document.addEventListener("dragstart",e=>{ if(noCopyTarget(e.target)) e.preventDefault(); },true);
+document.addEventListener("keydown",e=>{
+  if(!(e.ctrlKey||e.metaKey)) return;
+  if(!["c","C","x","X","a","A"].includes(e.key)) return;
+  if(noCopyTarget(e.target) || noCopyTarget(window.getSelection()?.anchorNode)) e.preventDefault();
+},true);
 window.addEventListener("pagehide",e=>{ if(!e.persisted) saveUnfinishedRound(); });
 window.addEventListener("beforeunload",saveUnfinishedRound);
 window.addEventListener("resize",()=>{if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();});

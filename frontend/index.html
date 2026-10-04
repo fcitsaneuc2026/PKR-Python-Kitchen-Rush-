@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=nocurtain1" />
+  <link rel="stylesheet" href="/static/style.css?v=ui6" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -41,6 +41,7 @@
               <h2 data-i18n="gameWindow">Game Window</h2>
             </div>
             <div class="hud">
+              <button type="button" id="gameLangToggle" class="primary-btn menu-play-btn hud-lang-toggle" data-i18n="langBtn" data-i18n-aria="langAria">中文</button>
               <span><span data-i18n="hudTime">Time</span>: <b id="timeValue">10:00</b></span>
               <span><span data-i18n="hudScore">Score</span>: <b id="scoreValue">0</b></span>
               <span><span data-i18n="hudOrders">Orders</span>: <b id="ordersValue">0</b></span>
@@ -160,7 +161,7 @@
           </div>
         </section>
 
-        <section class="panel guidance-panel">
+        <section class="panel guidance-panel no-copy">
           <div class="panel-heading">
             <h2 data-i18n="guideWindow">Guide Window</h2>
           </div>
@@ -206,8 +207,11 @@
             </div>
             <div class="command-guide">
               <h3 data-i18n="commandGuidance">Command Guidance</h3>
+              <div class="mini-command-window no-copy" aria-hidden="true">
+                <div class="command-curtain-bar"><h2 data-i18n="commandWindow">Command Window</h2></div>
+                <pre id="guideCode" class="mini-command-code">move_to(3, 9)</pre>
+              </div>
               <p id="guideText">Bottom-left is (1, 1). Top-right is (10, 10). You can only walk on empty floor tiles. Tables and stations block the way; move_to finds the shortest path around them. You cannot stand on a table or station.</p>
-              <pre id="guideCode">move_to(3, 9)</pre>
             </div>
           </div>
         </section>
@@ -269,6 +273,7 @@
     </section>
     <section id="tutorialScreen" class="tutorial-screen hidden">
       <div class="tutorial-layout">
+        <button id="tutorialBackBtn" type="button" class="primary-btn menu-play-btn tutorial-back-btn" aria-label="Back to main menu" data-i18n-aria="backGameAria">←</button>
         <div class="tutorial-main">
           <div class="tutorial-square">
             <div class="guide-demo" id="tutorialDemo">
@@ -299,7 +304,10 @@
             <p class="tutorial-step-label" id="tutorialStepLabel">Step 1 of 10</p>
             <h3 id="tutorialTitle">Walk on the 10 × 10 grid</h3>
             <p id="tutorialText"></p>
-            <pre id="tutorialCode"></pre>
+            <div class="mini-command-window no-copy" aria-hidden="true">
+              <div class="command-curtain-bar"><h2 data-i18n="commandWindow">Command Window</h2></div>
+              <pre id="tutorialCode" class="mini-command-code"></pre>
+            </div>
           </div>
         </div>
         <button id="tutorialNextBtn" type="button" class="primary-btn menu-play-btn tutorial-next-btn" aria-label="Next step" data-i18n-aria="tutorialNextAria">→</button>
@@ -307,7 +315,7 @@
     </section>
   </main>
 
-  <script src="/static/i18n.js?v=i18n1"></script>
-  <script src="/static/game.js?v=nocurtain1"></script>
+  <script src="/static/i18n.js?v=i18n2"></script>
+  <script src="/static/game.js?v=ui3"></script>
 </body>
 </html>
