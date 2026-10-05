@@ -3594,9 +3594,20 @@ body.in-game > .lang-toggle {
   max-height: 64px !important;
 }
 
+#gameScreen.is-output-expanded .command-curtain-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 #gameScreen.is-output-expanded .command-panel .console {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: auto !important;
 }
 
 #gameScreen .command-guide p {

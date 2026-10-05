@@ -7,6 +7,10 @@ window.PKR_GUIDE_ZH = {
     "从箱子拿食材",
     "站在箱子旁边的空地上。生菜 (1, 10)，番茄 (2, 10)，面包 (3, 10)，肉饼 (4, 10)。take() 按拿取顺序放入空的背包格。四格都满时，新食材替换最早拿的那一个。若已有第 1、2、3、4 个，第 5 个会替换第 1 个，变成第 5、2、3、4 个。第 6 个会替换第 2 个，变成第 5、6、3、4 个。被替换的食材掉在你左、右、上或下的空格子上，停留 3 秒，每一秒变淡一点，然后消失。"
   ],
+  drop: [
+    "丢掉背包的一格",
+    "背包从左到右是第 1、2、3、4 格。drop_inventory(1) 把第 1 格里的东西丢到你左、右、上或下的空格子，其它格不动。食材会漂浮 3 秒，每一秒变淡一点。站到那一格上再 collect() 才能捡起。只是走上去不会捡起。"
+  ],
   cook: [
     "开始烹饪",
     "站在空闲煎锅旁边的空地上。煎锅在 (4, 4)、(4, 5)、(4, 6)，可站在上下左右。例如 (4, 4) 的锅：若格子空着，可用 (5, 4)、(3, 4)、(4, 3) 或 (4, 5)。开始后可以走开，锅会继续煮。"
@@ -83,6 +87,7 @@ window.PKR_I18N = {
     commandGuidance: "Command Guidance",
     tabMove: "Move",
     tabTake: "Take",
+    tabDrop: "Drop",
     tabCook: "Cook",
     tabCut: "Cut",
     tabCollect: "Collect",
@@ -181,6 +186,8 @@ window.PKR_I18N = {
     logStartCut: "Started cutting {item}.",
     failRoundOver: "the round is over.",
     failTakeArgs: "take() needs \"bun\", \"patty\", \"lettuce\", or \"tomato\".",
+    failDropEmpty: "slot {n} is empty.",
+    failDropArgs: "drop_inventory() needs 1, 2, 3, or 4.",
     failPackTake: "backpack is full, cannot take(\"{type}\").",
     logTook: "Took {item}.",
     logDropped: "Dropped {item} at ({c}, {r}).",
@@ -261,6 +268,7 @@ window.PKR_I18N = {
     commandGuidance: "命令说明",
     tabMove: "移动",
     tabTake: "拿取",
+    tabDrop: "丢下",
     tabCook: "烹饪",
     tabCut: "切配",
     tabCollect: "收取",
@@ -359,6 +367,8 @@ window.PKR_I18N = {
     logStartCut: "开始切{item}。",
     failRoundOver: "本局已经结束。",
     failTakeArgs: "take() 需要 \"bun\"、\"patty\"、\"lettuce\" 或 \"tomato\"。",
+    failDropEmpty: "第 {n} 格是空的。",
+    failDropArgs: "drop_inventory() 需要 1、2、3 或 4。",
     failPackTake: "背包已满，无法 take(\"{type}\")。",
     logTook: "拿取了{item}。",
     logDropped: "把{item}掉在了 ({c}, {r})。",

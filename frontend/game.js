@@ -197,11 +197,12 @@ function findDropTile() {
   return null;
 }
 
-function oldestBackpackIndex() {
+function oldestBackpackIndex(type) {
   let best = -1;
   let bestSeq = Infinity;
   state.backpack.forEach((item, index) => {
     if (!item) return;
+    if (type && item.type !== type) return;
     const seq = Number.isFinite(item.seq) ? item.seq : index;
     if (seq < bestSeq) {
       bestSeq = seq;
@@ -417,6 +418,11 @@ const GUIDE_LESSONS = {
     "Stand on an empty tile next to a chest. Lettuce is (1, 10), Tomato is (2, 10), Bun is (3, 10), and Patty is (4, 10). take() fills the next empty backpack slot and remembers pickup order. When all 4 slots are full, the new ingredient replaces the oldest one. After 1st, 2nd, 3rd, and 4th, the 5th replaces the 1st, so the backpack becomes 5th, 2nd, 3rd, 4th. The 6th replaces the 2nd: 5th, 6th, 3rd, 4th. The replaced ingredient drops on an empty tile to your left, right, above, or below. It floats for 3 seconds, fading once each second, then disappears.",
     'move_to(3, 9)\ntake("bun")'
   ],
+  drop: [
+    "Drop one backpack slot",
+    "The backpack slots are numbered 1, 2, 3, and 4, left to right. drop_inventory(1) drops whatever is in slot 1 onto an empty tile to your left, right, above, or below. The other slots stay where they are. The item floats for 3 seconds, fading once each second. Stand on that exact tile and collect() to pick it up. Walking onto it does not pick it up.",
+    "drop_inventory(1)"
+  ],
   cook: [
     "Start cooking",
     "Stand on any empty tile next to a free Cooking Pan at (4, 4), (4, 5), or (4, 6): left, right, above, or below. Example for the pan at (4, 4): (5, 4), (3, 4), (4, 3), or (4, 5) if that tile is empty. You can walk away while it cooks.",
@@ -458,7 +464,7 @@ const GUIDE_LESSONS = {
     "status()"
   ]
 };
-const TUTORIAL_STEPS = ["movement", "take", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
+const TUTORIAL_STEPS = ["movement", "take", "drop", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
 let tutorialIndex = 0;
 
 function setGuide(tab) {
@@ -496,7 +502,7 @@ document.querySelectorAll(".guide-tabs .tab").forEach(button => {
 function syncGuideDemo(tab) {
   const demo = $("guideDemo");
   const character = $("guideCharacter");
-  const playable = ["movement", "take", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
+  const playable = ["movement", "take", "drop", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
   if (playable.includes(tab)) {
     if (demo) demo.hidden = false;
     if (character) character.hidden = true;
@@ -538,6 +544,7 @@ function useGuideHost(name) {
 const GUIDE_HIGHLIGHTS = {
   movement: [{ column: 3, row: 9 }],
   take: [{ column: 3, row: 10 }, { column: 3, row: 9 }],
+  drop: [{ column: 3, row: 9 }, { column: 3, row: 8 }],
   cook: [{ column: 4, row: 4 }, { column: 5, row: 4 }],
   cut: [{ column: 7, row: 4 }, { column: 8, row: 4 }],
   collect: [{ column: 4, row: 4 }, { column: 5, row: 4 }],
@@ -784,6 +791,18 @@ async function playGuideScene(tab, alive) {
     await waitGuide(380);
     setGuideStation("bun", "bunChestClosed");
     await waitGuide(500);
+    return;
+  }
+
+  if (tab === "drop") {
+    const stand = await walkGuidePath(start, { column: 3, row: 9 }, alive);
+    if (!alive()) return;
+    setGuidePlayer(stand.column, stand.row, "playerDown");
+    setGuideItem(3, 9, assetPaths.bunUncooked, true);
+    await waitGuide(280);
+    if (!alive()) return;
+    setGuideItem(3, 8, assetPaths.bunUncooked, true);
+    await waitGuide(700);
     return;
   }
 
@@ -1675,7 +1694,7 @@ function executeGameCommand(name,args){
   if(name==="take"){
     const type=String(args[0]);
     return action(async()=>{
-      if(!ingredientInfo[type])fail(t("failTakeArgs"));
+      if(!MATERIAL_TYPES.includes(type))fail(t("failTakeArgs"));
       if(!backpackHasSpace()&&!findDropTile())fail(t("failNoDropSpace"));
       const station=requireNear(type, `take("${type}")`);
       const sprite=state.scene.stationSprites?.[type];
@@ -1697,6 +1716,24 @@ function executeGameCommand(name,args){
       state.scene.hideCarry();
       state.scene.showItemEffect(t("logTook",{item:itemPhrase(type,raw)}),"");
       log(t("logTook",{item:itemPhrase(type,raw)}));
+    });
+  }
+  if(name==="drop_inventory"){
+    const slot=Number(args[0]);
+    return action(async()=>{
+      if(!Number.isInteger(slot)||slot<1||slot>4)fail(t("failDropArgs"));
+      const item=state.backpack[slot-1];
+      if(!item)fail(t("failDropEmpty",{n:slot}));
+      const tile=findDropTile();
+      if(!tile)fail(t("failNoDropSpace"));
+      state.backpack[slot-1]=null;
+      renderIngredientBackpack();
+      const tex=itemTexture(item.type,item.status);
+      await state.scene.showCarry(tex,"player",220);
+      const spot=gridToPixel(tile.column,tile.row);
+      await state.scene.showCarry(tex,spot,280);
+      state.scene.hideCarry();
+      dropOnFloor(item,tile);
     });
   }
   if(name==="cook")return startToolWork(String(args[0]),"pan");
@@ -1893,7 +1930,7 @@ async function loadPython(){
     await state.pyodide.runPythonAsync(`
 import ast, js
 
-_PKR_COMMANDS = {"move_to", "take", "cook", "cut", "collect", "plate", "wash_plate", "serve", "wait", "status"}
+_PKR_COMMANDS = {"move_to", "take", "drop_inventory", "cook", "cut", "collect", "plate", "wash_plate", "serve", "wait", "status"}
 
 class _PkrAwaitCommands(ast.NodeTransformer):
     def visit_Call(self, node):
@@ -1929,6 +1966,8 @@ async def move_to(column, row):
     return await js.execute_game_command("move_to", [column, row])
 async def take(item):
     return await js.execute_game_command("take", [item])
+async def drop_inventory(slot):
+    return await js.execute_game_command("drop_inventory", [slot])
 async def cook(item):
     return await js.execute_game_command("cook", [item])
 async def cut(item):
