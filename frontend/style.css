@@ -4170,3 +4170,36 @@ body.in-game > .lang-toggle {
   tab-size: 4;
   white-space: pre;
 }
+
+#gameScreen .pkr-side-column .command-panel .command-curtain-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#gameScreen .pkr-side-column .command-panel .code-editor-wrap {
+  flex: 1 1 0 !important;
+  min-height: 88px !important;
+}
+
+#gameScreen .pkr-side-column .command-panel .editor-actions,
+#gameScreen .pkr-side-column .command-panel .console-title {
+  flex: 0 0 auto !important;
+}
+
+#gameScreen .pkr-side-column .command-panel .console {
+  flex: 1 1 0 !important;
+  min-height: 80px !important;
+  margin: 0 !important;
+  padding: 8px 10px;
+  overflow: auto !important;
+}
+
+#gameScreen.is-output-expanded .pkr-side-column .command-panel .code-editor-wrap {
+  flex: 0 0 64px !important;
+  min-height: 0 !important;
+  max-height: 64px !important;
+  overflow: hidden !important;
+}

@@ -533,8 +533,8 @@ const GUIDE_LESSONS = {
   ],
   wait: [
     "Pause the script",
-    "Optional wait, for example while a station finishes, before collect().",
-    "wait(1)"
+    "wait() with no number waits 1 second (the default). wait(1) is the same. wait(2) waits 2 seconds. wait(0) does not add extra time: the next line runs right away (0 seconds, like a tiny yield). Use wait while a pan or board finishes, then collect().",
+    "wait()\nwait(0)\nwait(1)\nwait(2)"
   ],
   loop: [
     "Repeat commands",
@@ -744,8 +744,8 @@ function setGuideLayout(tab) {
 
 function guideWaitSeconds() {
   const code = ge("code")?.textContent || "wait(1)";
-  const match = code.match(/wait\(\s*(\d+(?:\.\d+)?)\s*\)/);
-  const seconds = match ? Number(match[1]) : 1;
+  const ones = [...code.matchAll(/wait\(\s*([1-9]\d*(?:\.\d+)?)\s*\)/g)].map(m => Number(m[1]));
+  const seconds = ones.length ? ones[0] : 1;
   return Math.max(1, Math.min(10, Math.round(seconds) || 1));
 }
 
@@ -2032,7 +2032,17 @@ function executeGameCommand(name,args){
     });
   }
   if(name==="wait")return action(async()=>{
-    const seconds=Math.max(0,Math.min(10,Number(args[0]||1)));
+    const list=args&&typeof args.toJs==="function"?args.toJs():(args||[]);
+    const raw=list[0];
+    const seconds=raw===undefined||raw===null||raw===""
+      ?1
+      :Math.max(0,Math.min(10,Number(raw)));
+    if(!Number.isFinite(seconds))fail(t("failWaitArgs"));
+    if(seconds===0){
+      await new Promise(r=>setTimeout(r,0));
+      log(t("logWaited",{n:0}));
+      return;
+    }
     const end=Date.now()+seconds*1000;
     while(Date.now()<end){
       if(state.scriptStopped)return;
@@ -2453,6 +2463,10 @@ function beginRound(name, practice){
   }
   const out=$("consoleOutput");
   if(out)out.textContent=state.pyodide?t("pythonLoaded"):t("pythonLoading");
+  const expandPanel=document.querySelector("#gameScreen .command-panel");
+  $("gameScreen")?.classList.remove("is-output-expanded");
+  if(expandPanel)clearConsoleExpandStyles(expandPanel);
+  syncConsoleExpandBtn(false);
   resetStationWork();
   useGuideHost("game");
   showScreen("gameScreen");

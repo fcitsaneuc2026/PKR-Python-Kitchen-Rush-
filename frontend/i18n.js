@@ -37,7 +37,7 @@ window.PKR_GUIDE_ZH = {
   ],
   wait: [
     "让脚本暂停",
-    "可选等待。例如等工位做完，再 collect()。",
+    "wait() 不写数字时默认等 1 秒。wait(1) 也是 1 秒。wait(2) 等 2 秒。wait(0) 不再额外等待，下一行马上执行（等于等 0 秒，只让出一点点时间）。可以在锅或砧板做完后 wait，再 collect()。"
   ],
   loop: [
     "重复执行命令",
@@ -234,6 +234,7 @@ window.PKR_I18N = {
     failMoveArgs: "move_to() needs coordinates from (1, 1) to (10, 10).",
     logMoved: "Moved to ({c}, {r}).",
     logWaited: "Waited {n} second(s).",
+    failWaitArgs: "wait() needs a number of seconds from 0 to 10. wait() with no number waits 1 second.",
     failUnknown: "unknown command.",
     gridRange: "Grid coordinates must be from 1 to 10. Bottom-left is (1,1), top-right is (10,10)."
   },
@@ -421,6 +422,7 @@ window.PKR_I18N = {
     failMoveArgs: "move_to() 的坐标必须在 (1, 1) 到 (10, 10) 之间。",
     logMoved: "已移动到 ({c}, {r})。",
     logWaited: "等待了 {n} 秒。",
+    failWaitArgs: "wait() 的秒数必须是 0 到 10。不写数字的 wait() 默认等 1 秒。",
     failUnknown: "未知命令。",
     gridRange: "格子坐标必须是 1 到 10。左下角是 (1,1)，右上角是 (10,10)。"
   }
