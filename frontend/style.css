@@ -4095,3 +4095,78 @@ body.in-game > .lang-toggle {
     min-width: 0 !important;
   }
 }
+
+#gameScreen .station-hover-card {
+  position: absolute;
+  z-index: 40;
+  width: 156px;
+  padding: 8px;
+  background: #fffdf5;
+  color: #222;
+  border: 2px solid #7f1d1d;
+  border-radius: 7px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.14);
+  font: 12px/1.2 Arial, sans-serif;
+  text-align: center;
+  pointer-events: none;
+  transform: translate(26px, -50%);
+}
+
+#gameScreen .station-hover-card.is-left {
+  transform: translate(calc(-100% - 26px), -50%);
+}
+
+#gameScreen .station-hover-card[hidden] {
+  display: none !important;
+}
+
+#gameScreen .station-hover-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+#gameScreen .station-hover-card p {
+  margin: 0;
+  font-size: 12px;
+  color: #3A2A2A;
+}
+
+#gameScreen .station-hover-card .order-materials {
+  margin-top: 8px;
+}
+
+#gameScreen .station-hover-card .order-materials[hidden] {
+  display: none !important;
+}
+
+#gameScreen .code-editor-wrap {
+  display: flex;
+  align-items: stretch;
+  min-height: 72px;
+  background: #0b1220;
+  overflow: hidden;
+}
+
+#gameScreen .code-line-numbers {
+  margin: 0;
+  padding: 8px 8px 8px 10px;
+  min-width: 2.6em;
+  text-align: right;
+  color: #6b7280;
+  background: #111827;
+  border-right: 1px solid #374151;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  user-select: none;
+  overflow: hidden;
+  white-space: pre;
+}
+
+#gameScreen .code-editor-wrap textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  tab-size: 4;
+  white-space: pre;
+}

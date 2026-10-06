@@ -24,6 +24,83 @@ function stationDisplayName(id, station) {
   if (s.kind === "serve") return t("serveCounter");
   return s.label;
 }
+
+function usesRichHover(station) {
+  return !!station && (station.kind === "plate" || station.role === "pan" || station.role === "cuttingBoard");
+}
+
+let hoveredStationId = null;
+
+function fillStationHoverCard(id, station) {
+  const title = $("stationHoverTitle");
+  const note = $("stationHoverNote");
+  const mats = $("stationHoverMaterials");
+  if (!title || !note || !mats) return;
+  title.textContent = stationDisplayName(id, station);
+  mats.innerHTML = "";
+  mats.hidden = true;
+  if (station.kind === "plate") {
+    const items = station.work?.items || [];
+    if (!items.length) {
+      note.textContent = t("plateWaiting");
+    } else {
+      note.textContent = station.work?.phase === "complete" ? t("plateComplete") : t("plateHasItems");
+      mats.hidden = false;
+      items.forEach(item => {
+        const visual = ingredientInfo[item.type]?.states?.[item.status];
+        if (!visual?.image) return;
+        const img = document.createElement("img");
+        img.src = visual.image;
+        img.alt = itemPhrase(item.type, item.status);
+        mats.appendChild(img);
+      });
+    }
+    return;
+  }
+  if (station.role === "pan") {
+    note.textContent = t("panCookTime");
+    return;
+  }
+  note.textContent = t("boardCutTime");
+}
+
+function positionStationHoverCard(station) {
+  const card = $("stationHoverCard");
+  const stage = document.querySelector("#gameScreen .pkr-game-stage");
+  const canvas = state.phaser?.canvas;
+  if (!card || !stage || !canvas) return;
+  const stageRect = stage.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const cx = (canvasRect.left - stageRect.left) + station.x * (canvasRect.width / 480);
+  const cy = (canvasRect.top - stageRect.top) + station.y * (canvasRect.height / 480);
+  card.style.left = `${cx}px`;
+  card.style.top = `${cy}px`;
+  card.classList.toggle("is-left", Number(station.column) >= 7);
+}
+
+function showStationHoverCard(id, station) {
+  hoveredStationId = id;
+  const card = $("stationHoverCard");
+  if (!card) return;
+  fillStationHoverCard(id, station);
+  positionStationHoverCard(station);
+  card.hidden = false;
+}
+
+function hideStationHoverCard() {
+  hoveredStationId = null;
+  const card = $("stationHoverCard");
+  if (card) card.hidden = true;
+}
+
+function refreshHoveredStationCard() {
+  if (!hoveredStationId) return;
+  const station = stations[hoveredStationId];
+  if (!station) { hideStationHoverCard(); return; }
+  fillStationHoverCard(hoveredStationId, station);
+  positionStationHoverCard(station);
+}
+
 function getLesson(tab) {
   const en = GUIDE_LESSONS[tab] || GUIDE_LESSONS.movement;
   const zh = window.PKR_GUIDE_ZH && (PKR_GUIDE_ZH[tab] || PKR_GUIDE_ZH.movement);
@@ -130,6 +207,7 @@ function updatePlateVisual(id) {
     return;
   }
   setStationSpriteTexture(id, stationIdleTexture(station), true);
+  if (hoveredStationId === id) refreshHoveredStationCard();
 }
 
 function updateWashVisual() {
@@ -458,13 +536,18 @@ const GUIDE_LESSONS = {
     "Optional wait, for example while a station finishes, before collect().",
     "wait(1)"
   ],
+  loop: [
+    "Repeat commands",
+    "Use repeat with a number, then indent the commands underneath, like VS Code. while True or forever keeps repeating until you click Stop Python.",
+    "repeat 3:\n    move_to(3, 9)\n    move_to(2, 2)\n\nwhile True:\n    wait(1)\n\nforever:\n    status()"
+  ],
   status: [
     "Check your state",
     "Shows your position, backpack contents in pickup order, ingredients still on the floor, the current order, and the materials you still need.",
     "status()"
   ]
 };
-const TUTORIAL_STEPS = ["movement", "take", "drop", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
+const TUTORIAL_STEPS = ["movement", "take", "drop", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "loop", "status"];
 let tutorialIndex = 0;
 
 function setGuide(tab) {
@@ -502,7 +585,7 @@ document.querySelectorAll(".guide-tabs .tab").forEach(button => {
 function syncGuideDemo(tab) {
   const demo = $("guideDemo");
   const character = $("guideCharacter");
-  const playable = ["movement", "take", "drop", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "status"];
+  const playable = ["movement", "take", "drop", "cook", "cut", "collect", "plate", "wash", "serve", "wait", "loop", "status"];
   if (playable.includes(tab)) {
     if (demo) demo.hidden = false;
     if (character) character.hidden = true;
@@ -552,6 +635,7 @@ const GUIDE_HIGHLIGHTS = {
   wash: [{ column: 6, row: 10 }, { column: 6, row: 9 }],
   serve: [{ column: 10, row: 1 }, { column: 9, row: 1 }],
   wait: [],
+  loop: [{ column: 3, row: 9 }],
   status: [{ column: 2, row: 2 }]
 };
 
@@ -773,7 +857,7 @@ async function playGuideScene(tab, alive) {
   setGuideHighlights(tab);
   setGuideItem(2, 2, assetPaths.bunUncooked, false);
 
-  if (tab === "movement") {
+  if (tab === "movement" || tab === "loop") {
     await walkGuidePath(start, { column: 3, row: 9 }, alive);
     return;
   }
@@ -982,6 +1066,7 @@ function showScreen(id) {
     const el = $(screenId); if (el) el.classList.toggle("hidden", screenId !== id);
   });
   document.body.classList.toggle("in-game", id === "gameScreen");
+  if (id !== "gameScreen") hideStationHoverCard();
   window.scrollTo(0, 0);
   if (id !== currentScreenId) {
     currentScreenId = id;
@@ -1063,6 +1148,73 @@ function playTypingSound(){
 }
 $("codeEditor")?.addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const k=["Backspace","Delete","Enter","Tab","Space"];if(e.key.length===1||k.includes(e.key))playTypingSound();});
 
+function setupCodeEditor(){
+  const editor=$("codeEditor");
+  const nums=$("codeLineNumbers");
+  if(!editor)return;
+  const TAB="    ";
+  const syncLineNumbers=()=>{
+    if(!nums)return;
+    const n=Math.max(1,editor.value.split("\n").length);
+    nums.textContent=Array.from({length:n},(_,i)=>String(i+1)).join("\n");
+    nums.scrollTop=editor.scrollTop;
+  };
+  const indentBlock=(outdent)=>{
+    const start=editor.selectionStart;
+    const end=editor.selectionEnd;
+    const v=editor.value;
+    const from=v.lastIndexOf("\n",start-1)+1;
+    let to=end;
+    if(to>from && v[to-1]==="\n") to-=1;
+    const block=v.slice(from,to);
+    const next=block.split("\n").map(line=>{
+      if(outdent) return line.replace(/^(\t| {1,4})/,"");
+      return TAB+line;
+    }).join("\n");
+    editor.value=v.slice(0,from)+next+v.slice(to);
+    editor.selectionStart=from;
+    editor.selectionEnd=from+next.length;
+  };
+  editor.addEventListener("keydown",e=>{
+    if(e.key==="Tab"){
+      e.preventDefault();
+      playTypingSound();
+      if(e.shiftKey) indentBlock(true);
+      else if(editor.selectionStart!==editor.selectionEnd) indentBlock(false);
+      else {
+        const start=editor.selectionStart;
+        const v=editor.value;
+        editor.value=v.slice(0,start)+TAB+v.slice(editor.selectionEnd);
+        editor.selectionStart=editor.selectionEnd=start+TAB.length;
+      }
+      syncLineNumbers();
+      return;
+    }
+    if(e.key==="Enter"){
+      const start=editor.selectionStart;
+      const v=editor.value;
+      const lineStart=v.lastIndexOf("\n",start-1)+1;
+      const line=v.slice(lineStart,start);
+      const indent=(line.match(/^[ \t]*/) || [""])[0];
+      const extra=/:\s*$/.test(line)?TAB:"";
+      e.preventDefault();
+      playTypingSound();
+      editor.value=v.slice(0,start)+"\n"+indent+extra+v.slice(editor.selectionEnd);
+      const caret=start+1+indent.length+extra.length;
+      editor.selectionStart=editor.selectionEnd=caret;
+      syncLineNumbers();
+      return;
+    }
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    const keys=["Backspace","Delete","Space"];
+    if(e.key.length===1||keys.includes(e.key))playTypingSound();
+  });
+  editor.addEventListener("input",syncLineNumbers);
+  editor.addEventListener("scroll",()=>{ if(nums) nums.scrollTop=editor.scrollTop; });
+  syncLineNumbers();
+}
+setupCodeEditor();
+
 class KitchenScene extends Phaser.Scene {
   constructor(){super("KitchenScene");}
   preload(){
@@ -1088,29 +1240,13 @@ class KitchenScene extends Phaser.Scene {
     this.playerSprite.on("pointerover",()=>{
       this.playerLabel.setVisible(true).setAlpha(1);
       this.playerSprite.setData("hovering", true);
-      this.tweens.killTweensOf(this.playerSprite, "displayWidth");
-      this.tweens.killTweensOf(this.playerSprite, "displayHeight");
-      this.tweens.add({
-        targets:this.playerSprite,
-        displayWidth:this.playerSprite.getData("hoverSize"),
-        displayHeight:this.playerSprite.getData("hoverSize"),
-        duration:140,
-        ease:"Back.Out"
-      });
+      this.applyPlayerSize();
     });
     this.carrySprite=this.add.image(start.x,start.y-26,"bunUncooked").setDepth(8).setVisible(false).setDisplaySize(30,30);
     this.carryFollowPlayer=false;
     this.playerSprite.on("pointerout",()=>{
       this.playerSprite.setData("hovering", false);
-      this.tweens.killTweensOf(this.playerSprite, "displayWidth");
-      this.tweens.killTweensOf(this.playerSprite, "displayHeight");
-      this.tweens.add({
-        targets:this.playerSprite,
-        displayWidth:this.playerSprite.getData("restSize"),
-        displayHeight:this.playerSprite.getData("restSize"),
-        duration:140,
-        ease:"Sine.easeOut"
-      });
+      this.applyPlayerSize();
       this.tweens.add({
         targets:this.playerLabel,
         alpha:0,
@@ -1209,8 +1345,11 @@ class KitchenScene extends Phaser.Scene {
       }).setOrigin(.5).setDepth(4).setVisible(false);
 
       sprite.on("pointerover",()=>{
-        label.setVisible(true);
-        label.setAlpha(1);
+        if(usesRichHover(station)) showStationHoverCard(id,station);
+        else {
+          label.setVisible(true);
+          label.setAlpha(1);
+        }
         if(station.kind==="serve") return;
         this.tweens.killTweensOf(sprite);
         this.tweens.add({
@@ -1233,6 +1372,7 @@ class KitchenScene extends Phaser.Scene {
             ease:"Sine.easeOut"
           });
         }
+        hideStationHoverCard();
         this.tweens.add({
           targets:label,
           alpha:0,
@@ -1260,7 +1400,10 @@ class KitchenScene extends Phaser.Scene {
       updateHUD();
       return Promise.resolve();
     }
-    return steps.reduce((chain,step)=>chain.then(()=>this.walkOneTile(step)),Promise.resolve());
+    return steps.reduce((chain,step)=>chain.then(()=>{
+      if(state.scriptStopped||state.gameEnded)return;
+      return this.walkOneTile(step);
+    }),Promise.resolve());
   }
   walkOneTile(step){
     const point=gridToPixel(step.column,step.row);
@@ -1268,6 +1411,19 @@ class KitchenScene extends Phaser.Scene {
     return new Promise(resolve=>{
       const from={x:this.playerSprite.x,y:this.playerSprite.y};
       const duration=Math.max(140,distance(from,point)*5);
+      let settled=false;
+      const finish=()=>{
+        if(settled)return;
+        settled=true;
+        this.playerSprite.setPosition(point.x,point.y);
+        state.player.x=point.x;
+        state.player.y=point.y;
+        if(this.playerLabel)this.playerLabel.setPosition(point.x,point.y-36);
+        this.syncCarryToPlayer();
+        syncFloorItemDepth();
+        updateHUD();
+        resolve();
+      };
       this.tweens.add({
         targets:this.playerSprite,x:point.x,y:point.y,duration,ease:"Sine.easeInOut",
         onUpdate:()=>{
@@ -1277,14 +1433,8 @@ class KitchenScene extends Phaser.Scene {
           this.syncCarryToPlayer();
           updateHUD();
         },
-        onComplete:()=>{
-          state.player.x=point.x;
-          state.player.y=point.y;
-          if(this.playerLabel)this.playerLabel.setPosition(point.x,point.y-36);
-          syncFloorItemDepth();
-          updateHUD();
-          resolve();
-        }
+        onComplete:finish,
+        onStop:finish
       });
     });
   }
@@ -1923,14 +2073,39 @@ window.execute_game_command=async(name,args)=>{
     throw error;
   }
 };
+window.pkr_should_stop=()=>!!(state.scriptStopped||state.gameEnded);
+window.pkr_yield=()=>new Promise(resolve=>setTimeout(resolve,0));
 
 async function loadPython(){
   try{
     state.pyodide=await loadPyodide();
     await state.pyodide.runPythonAsync(`
-import ast, js
+import ast, js, re
 
 _PKR_COMMANDS = {"move_to", "take", "drop_inventory", "cook", "cut", "collect", "plate", "wash_plate", "serve", "wait", "status"}
+
+def __pkr_rewrite_loops(source):
+    out = []
+    for line in source.splitlines(True):
+        match = re.match(r'^([ \\t]*)(.*?)(\\r?\\n)?$', line)
+        if not match:
+            out.append(line)
+            continue
+        indent, rest, nl = match.group(1), match.group(2).rstrip(), match.group(3) or ""
+        rewritten = None
+        count = re.match(r'(?i)^repeat\\s*\\(\\s*(\\d+|[A-Za-z_][A-Za-z0-9_]*)\\s*\\)\\s*(?:times)?\\s*:?$', rest)
+        if not count:
+            count = re.match(r'(?i)^repeat\\s+(\\d+)\\s*(?:times)?\\s*:?$', rest)
+        if count:
+            raw = count.group(1)
+            times = raw if re.match(r'^[A-Za-z_]', raw) else str(max(0, min(int(raw), 9999)))
+            rewritten = f"{indent}for _pkr_repeat in range({times}):"
+        elif re.match(r'(?i)^forever(?:\\s+do)?\\s*:?$', rest):
+            rewritten = f"{indent}while True:"
+        elif re.match(r'(?i)^while\\s+true(?:\\s+do)?\\s*:?$', rest):
+            rewritten = f"{indent}while True:"
+        out.append((rewritten if rewritten is not None else match.group(1) + match.group(2)) + nl)
+    return "".join(out)
 
 class _PkrAwaitCommands(ast.NodeTransformer):
     def visit_Call(self, node):
@@ -1944,9 +2119,25 @@ class _PkrAwaitCommands(ast.NodeTransformer):
             return node.value
         return node
 
+class _PkrStopLoops(ast.NodeTransformer):
+    def visit_While(self, node):
+        node = self.generic_visit(node)
+        test = node.test
+        forever = isinstance(test, ast.Constant) and test.value is True
+        if forever:
+            stop_if = ast.If(
+                test=ast.Call(func=ast.Name(id="__pkr_should_stop", ctx=ast.Load()), args=[], keywords=[]),
+                body=[ast.Break()],
+                orelse=[],
+            )
+            yield_call = ast.Expr(value=ast.Await(value=ast.Call(func=ast.Name(id="__pkr_yield", ctx=ast.Load()), args=[], keywords=[])))
+            node.body = [stop_if, yield_call] + list(node.body)
+        return node
+
 def __pkr_prepare(source):
-    tree = ast.parse(source)
+    tree = ast.parse(__pkr_rewrite_loops(source))
     tree = _PkrAwaitCommands().visit(tree)
+    tree = _PkrStopLoops().visit(tree)
     ast.fix_missing_locations(tree)
     body = tree.body if tree.body else [ast.Pass()]
     fn = ast.AsyncFunctionDef(
@@ -1962,6 +2153,11 @@ def __pkr_prepare(source):
     ast.fix_missing_locations(module)
     return ast.unparse(module)
 
+def __pkr_should_stop():
+    return bool(js.pkr_should_stop())
+
+async def __pkr_yield():
+    return await js.pkr_yield()
 async def move_to(column, row):
     return await js.execute_game_command("move_to", [column, row])
 async def take(item):
@@ -2020,6 +2216,7 @@ function stopPython(){
   if(!state.pythonRunning||state.scriptStopped)return;
   state.scriptStopped=true;
   state.scene?.hideCarry();
+  if(state.scene?.playerSprite)state.scene.tweens.killTweensOf(state.scene.playerSprite);
   log(t("pythonStopped"));
   if($("stopBtn"))$("stopBtn").disabled=true;
 }
@@ -2186,6 +2383,7 @@ function applyI18n() {
   applyStaticI18n();
   const labels = state.scene?.stationLabels;
   if (labels) Object.entries(labels).forEach(([id, label]) => { if (label?.setText) label.setText(stationDisplayName(id)); });
+  if (typeof refreshHoveredStationCard === "function") refreshHoveredStationCard();
   if (state.scene?.playerLabel?.setText) state.scene.playerLabel.setText(t("player"));
   state.floorItems.forEach(item => { if (item.label?.setText) item.label.setText(itemPhrase(item.type, item.status)); });
   const expandBtn = $("consoleExpandBtn");
@@ -2249,7 +2447,10 @@ function beginRound(name, practice){
   state.quitPromptOpen=false;
   state.dirtyPlates=0;
   state.actionQueue=Promise.resolve();
-  if($("codeEditor"))$("codeEditor").value="";
+  if($("codeEditor")){
+    $("codeEditor").value="";
+    $("codeEditor").dispatchEvent(new Event("input"));
+  }
   const out=$("consoleOutput");
   if(out)out.textContent=state.pyodide?t("pythonLoaded"):t("pythonLoading");
   resetStationWork();
@@ -2363,7 +2564,10 @@ document.addEventListener("keydown",e=>{
 },true);
 window.addEventListener("pagehide",e=>{ if(!e.persisted) saveUnfinishedRound(); });
 window.addEventListener("beforeunload",saveUnfinishedRound);
-window.addEventListener("resize",()=>{if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();});
+window.addEventListener("resize",()=>{
+  if(state.phaser&&state.phaser.scale)state.phaser.scale.refresh();
+  if(typeof refreshHoveredStationCard==="function")refreshHoveredStationCard();
+});
 
 startMenuMusic();window.addEventListener("pointerdown",unlockMenuAudio,{once:true});window.addEventListener("keydown",unlockMenuAudio,{once:true});
 fetch("/api/health").catch(()=>null);loadPython();

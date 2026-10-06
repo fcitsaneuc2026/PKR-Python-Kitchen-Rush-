@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Python Kitchen Rush</title>
-  <link rel="stylesheet" href="/static/style.css?v=ui17" />
+  <link rel="stylesheet" href="/static/style.css?v=ui19" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 </head>
@@ -19,7 +19,7 @@
         <button id="playMenuBtn" class="primary-btn menu-play-btn" data-i18n="playGame">▶ Play Game</button>
         <button id="practiceMenuBtn" class="primary-btn menu-play-btn" data-i18n="practice">Practice</button>
         <button id="menuLeaderboardBtn" class="primary-btn menu-play-btn" data-i18n="leaderboards">Leaderboards</button>
-        <button id="menuTutorialBtn" class="primary-btn menu-play-btn" data-i18n="tutorial">Tutorial</button>
+        <button id="menuTutorialBtn" class="primary-btn menu-play-btn" data-i18n="tutorial">How to Play</button>
       </div>
     </section>
 
@@ -121,6 +121,11 @@
   </div>
   </div>
   <div id="gameContainer"></div>
+                <div id="stationHoverCard" class="station-hover-card" hidden>
+                  <strong id="stationHoverTitle"></strong>
+                  <p id="stationHoverNote"></p>
+                  <div id="stationHoverMaterials" class="order-materials" hidden></div>
+                </div>
                 <div id="errorFlash" class="error-flash" aria-hidden="true"></div>
                 <button id="deliveryTest" type="button" hidden>Test delivery</button>
                 <div class="x-axis" aria-hidden="true">
@@ -156,7 +161,10 @@
             <h2 data-i18n="commandWindow">Command Window</h2>
           </div>
           <div class="command-curtain-body">
-            <textarea id="codeEditor" spellcheck="false" placeholder="# Type your Python here, then click Run Python" data-i18n-placeholder="codePlaceholder"></textarea>
+            <div class="code-editor-wrap">
+              <pre class="code-line-numbers" id="codeLineNumbers" aria-hidden="true">1</pre>
+              <textarea id="codeEditor" spellcheck="false" placeholder="# Type commands here. Tab indents, like VS Code." data-i18n-placeholder="codePlaceholder"></textarea>
+            </div>
             <div class="editor-actions">
               <button id="runBtn" class="primary-btn" disabled data-i18n="runPython">▶ Run Python</button>
               <button id="stopBtn" class="primary-btn stop-btn" disabled data-i18n="stopPython">■ Stop Python</button>
@@ -186,6 +194,7 @@
               <button type="button" class="tab" data-tab="wash" data-i18n="tabWash">Wash</button>
               <button type="button" class="tab" data-tab="serve" data-i18n="tabServe">Serve</button>
               <button type="button" class="tab" data-tab="wait" data-i18n="tabWait">Wait</button>
+              <button type="button" class="tab" data-tab="loop" data-i18n="tabLoop">Loop</button>
               <button type="button" class="tab" data-tab="status" data-i18n="tabStatus">Status</button>
             </div>
             <div class="visual-guide" id="visualGuide">
@@ -326,7 +335,7 @@
     </section>
   </main>
 
-  <script src="/static/i18n.js?v=i18n6"></script>
-  <script src="/static/game.js?v=ui10"></script>
+  <script src="/static/i18n.js?v=i18n8"></script>
+  <script src="/static/game.js?v=ui13"></script>
 </body>
 </html>
